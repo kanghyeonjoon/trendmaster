@@ -1,0 +1,6 @@
+streamlit
+pandas
+requests
+wordcloud
+matplotlib
+python-dateutil
