@@ -7,6 +7,11 @@ import dateutil.parser
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import platform
+from industry_crawler import (
+    SEARCH_KEYWORD_GROUPS,
+    crawl_industry_news,
+    summary_stats,
+)
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -121,16 +126,12 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
 
-# 6. 탭 메뉴 구성 (미국 뉴스 추가됨!)
-tab_names = ["🔥 종합", "💰 경제", "💻 IT/과학", "💊 건강", "🇺🇸 미국 뉴스(US)"]
+# 6. 탭 메뉴 구성
+tab_names = ["🔥 종합", "💰 경제", "💻 IT/과학", "💊 건강", "🇺🇸 미국 뉴스(US)", "🎬 유튜브 업종 문제 분석"]
 tabs = st.tabs(tab_names)
-codes = ["ALL", "BUSINESS", "TECHNOLOGY", "HEALTH", "ALL_US"]  # 마지막은 구분용 코드
+codes = ["ALL", "BUSINESS", "TECHNOLOGY", "HEALTH", "ALL_US", "INDUSTRY"]  # 마지막은 구분용 코드
 
 # 7. 콘텐츠 표시 로직
-current_tab_index = 0
-
-# 탭이 선택되었는지 확인하기 위해 각 탭 내부를 순회
-# (Streamlit은 탭 클릭 이벤트를 직접 잡기보다, 각 탭 컨텍스트 안에서 그리는 방식입니다)
 
 # 검색어가 있을 경우
 if search_keyword:
@@ -145,7 +146,6 @@ if search_keyword:
             column_config={"링크": st.column_config.LinkColumn("링크", display_text="이동")},
             use_container_width=True, hide_index=True
         )
-        # 엑셀 다운로드 버튼
         csv = df.to_csv(index=False).encode('utf-8-sig')
         st.download_button("💾 엑셀(CSV)로 저장", csv, "search_news.csv", "text/csv")
 
@@ -153,36 +153,108 @@ if search_keyword:
 else:
     for i, tab in enumerate(tabs):
         with tab:
-            # 미국 뉴스는 region을 'US'로 설정
-            if i == 4:  # 마지막 탭(미국)
-                df = get_news("ALL", region="US")
+            # ── 유튜브 업종 문제 분석 탭 ──────────────────────────────────
+            if codes[i] == "INDUSTRY":
+                st.subheader("🎬 유튜브 대행업 문제점 & 해결방법 분석")
+                st.caption(
+                    "Google News에서 유튜브 대행업 관련 기사를 수집해 **문제점**과 **해결방법**으로 분류합니다."
+                )
+
+                all_groups = list(SEARCH_KEYWORD_GROUPS.keys())
+                selected_groups = st.multiselect(
+                    "크롤링할 키워드 그룹 선택",
+                    options=all_groups,
+                    default=all_groups,
+                )
+
+                if st.button("🔍 크롤링 시작", key="industry_crawl", use_container_width=True):
+                    with st.spinner("기사 수집 중... (잠시 기다려주세요)"):
+                        result_df = crawl_industry_news(selected_groups)
+                    st.session_state["industry_df"] = result_df
+
+                result_df = st.session_state.get("industry_df")
+
+                if result_df is not None and not result_df.empty:
+                    # 요약 지표
+                    stats = summary_stats(result_df)
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("🔴 문제점", stats.get("🔴 문제점", 0))
+                    col2.metric("🟡 복합", stats.get("🟡 복합", 0))
+                    col3.metric("🟢 해결방법", stats.get("🟢 해결방법", 0))
+                    col4.metric("⚪ 참고", stats.get("⚪ 참고", 0))
+
+                    st.markdown("---")
+
+                    # 분류 필터
+                    filter_options = ["전체"] + sorted(result_df["분류"].unique().tolist())
+                    selected_filter = st.radio(
+                        "분류 필터",
+                        options=filter_options,
+                        horizontal=True,
+                    )
+                    view_df = result_df if selected_filter == "전체" else result_df[result_df["분류"] == selected_filter]
+
+                    st.caption(f"표시 기사: {len(view_df)}건 / 전체 {len(result_df)}건")
+                    st.data_editor(
+                        view_df,
+                        column_config={
+                            "분류": st.column_config.TextColumn("분류", width="small"),
+                            "제목": st.column_config.TextColumn("기사 제목", width="large"),
+                            "키워드그룹": st.column_config.TextColumn("그룹", width="medium"),
+                            "검색키워드": st.column_config.TextColumn("키워드", width="medium"),
+                            "발행일": st.column_config.TextColumn("시간", width="small"),
+                            "링크": st.column_config.LinkColumn("원문", display_text="클릭"),
+                        },
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                    # 워드 클라우드
+                    if show_wc:
+                        with st.expander("☁️ 주요 키워드 시각화 (Word Cloud)", expanded=False):
+                            wc_df = pd.DataFrame({"제목": view_df["제목"].tolist()})
+                            draw_wordcloud(wc_df)
+
+                    csv = view_df.to_csv(index=False).encode("utf-8-sig")
+                    st.download_button(
+                        "💾 결과 저장 (CSV)",
+                        csv,
+                        "youtube_industry_analysis.csv",
+                        "text/csv",
+                    )
+                elif result_df is not None and result_df.empty:
+                    st.warning("수집된 기사가 없습니다. 키워드 그룹을 선택하고 다시 시도해 주세요.")
+                else:
+                    st.info("위 버튼을 눌러 크롤링을 시작하세요.")
+
+            # ── 일반 뉴스 탭 ──────────────────────────────────────────────
             else:
-                df = get_news(codes[i], region="KR")
+                if codes[i] == "ALL_US":
+                    df = get_news("ALL", region="US")
+                else:
+                    df = get_news(codes[i], region="KR")
 
-            if df is not None:
-                # 1. 워드 클라우드 (토글이 켜져 있으면)
-                if show_wc:
-                    with st.expander("☁️ 주요 키워드 시각화 (Word Cloud)", expanded=True):
-                        draw_wordcloud(df)
+                if df is not None:
+                    if show_wc:
+                        with st.expander("☁️ 주요 키워드 시각화 (Word Cloud)", expanded=True):
+                            draw_wordcloud(df)
 
-                # 2. 뉴스 리스트
-                st.caption(f"수집된 기사: {len(df)}건")
-                st.data_editor(
-                    df,
-                    column_config={
-                        "제목": st.column_config.TextColumn("기사 제목", width="large"),
-                        "링크": st.column_config.LinkColumn("원문", display_text="클릭"),
-                        "발행일": st.column_config.TextColumn("시간", width="small")
-                    },
-                    use_container_width=True,
-                    hide_index=True
-                )
+                    st.caption(f"수집된 기사: {len(df)}건")
+                    st.data_editor(
+                        df,
+                        column_config={
+                            "제목": st.column_config.TextColumn("기사 제목", width="large"),
+                            "링크": st.column_config.LinkColumn("원문", display_text="클릭"),
+                            "발행일": st.column_config.TextColumn("시간", width="small"),
+                        },
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
-                # 3. 엑셀 다운로드 버튼 (Top 3 중 마지막 기능!)
-                csv = df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(
-                    label="💾 결과 파일로 저장 (Excel/CSV)",
-                    data=csv,
-                    file_name=f"news_result_{codes[i]}.csv",
-                    mime="text/csv"
-                )
+                    csv = df.to_csv(index=False).encode("utf-8-sig")
+                    st.download_button(
+                        label="💾 결과 파일로 저장 (Excel/CSV)",
+                        data=csv,
+                        file_name=f"news_result_{codes[i]}.csv",
+                        mime="text/csv",
+                    )
