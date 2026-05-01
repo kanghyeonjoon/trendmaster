@@ -7,11 +7,7 @@ import dateutil.parser
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import platform
-from industry_crawler import (
-    SEARCH_KEYWORD_GROUPS,
-    crawl_industry_news,
-    summary_stats,
-)
+from industry_crawler import crawl_by_keywords, summary_stats
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -127,7 +123,7 @@ with st.sidebar:
         st.rerun()
 
 # 6. 탭 메뉴 구성
-tab_names = ["🔥 종합", "💰 경제", "💻 IT/과학", "💊 건강", "🇺🇸 미국 뉴스(US)", "🎬 유튜브 업종 문제 분석"]
+tab_names = ["🔥 종합", "💰 경제", "💻 IT/과학", "💊 건강", "🇺🇸 미국 뉴스(US)", "🔎 업종 문제 분석"]
 tabs = st.tabs(tab_names)
 codes = ["ALL", "BUSINESS", "TECHNOLOGY", "HEALTH", "ALL_US", "INDUSTRY"]  # 마지막은 구분용 코드
 
@@ -153,32 +149,40 @@ if search_keyword:
 else:
     for i, tab in enumerate(tabs):
         with tab:
-            # ── 유튜브 업종 문제 분석 탭 ──────────────────────────────────
+            # ── 업종 문제·해결 분석 탭 ────────────────────────────────────
             if codes[i] == "INDUSTRY":
-                st.subheader("🎬 유튜브 대행업 문제점 & 해결방법 분석")
+                st.subheader("🔎 업종 문제점 & 해결방법 크롤러")
                 st.caption(
-                    "Google News에서 유튜브 대행업 관련 기사를 수집해 **문제점**과 **해결방법**으로 분류합니다."
+                    "업종 키워드를 입력하면 관련 **문제점, 고민, 해결방법**을 자동으로 수집·분류합니다."
                 )
 
-                all_groups = list(SEARCH_KEYWORD_GROUPS.keys())
-                selected_groups = st.multiselect(
-                    "크롤링할 키워드 그룹 선택",
-                    options=all_groups,
-                    default=all_groups,
+                # 키워드 입력
+                raw_input = st.text_input(
+                    "업종 키워드 입력 (쉼표로 여러 개 가능)",
+                    placeholder="예: 유튜브 대행, 영상 편집, 인플루언서 마케팅",
+                    key="industry_keyword_input",
                 )
 
                 if st.button("🔍 크롤링 시작", key="industry_crawl", use_container_width=True):
-                    with st.spinner("기사 수집 중... (잠시 기다려주세요)"):
-                        result_df = crawl_industry_news(selected_groups)
-                    st.session_state["industry_df"] = result_df
+                    keywords = [k.strip() for k in raw_input.split(",") if k.strip()]
+                    if not keywords:
+                        st.warning("키워드를 한 개 이상 입력해 주세요.")
+                    else:
+                        with st.spinner(f"'{', '.join(keywords)}' 관련 기사 수집 중..."):
+                            result_df = crawl_by_keywords(keywords)
+                        st.session_state["industry_df"] = result_df
+                        st.session_state["industry_keywords"] = keywords
 
                 result_df = st.session_state.get("industry_df")
 
                 if result_df is not None and not result_df.empty:
+                    used_kw = st.session_state.get("industry_keywords", [])
+                    st.success(f"키워드: **{', '.join(used_kw)}** — 총 {len(result_df)}건 수집")
+
                     # 요약 지표
                     stats = summary_stats(result_df)
                     col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("🔴 문제점", stats.get("🔴 문제점", 0))
+                    col1.metric("🔴 문제·고민", stats.get("🔴 문제·고민", 0))
                     col2.metric("🟡 복합", stats.get("🟡 복합", 0))
                     col3.metric("🟢 해결방법", stats.get("🟢 해결방법", 0))
                     col4.metric("⚪ 참고", stats.get("⚪ 참고", 0))
@@ -186,22 +190,27 @@ else:
                     st.markdown("---")
 
                     # 분류 필터
-                    filter_options = ["전체"] + sorted(result_df["분류"].unique().tolist())
+                    filter_options = ["전체"] + ["🔴 문제·고민", "🟡 복합", "🟢 해결방법", "⚪ 참고"]
                     selected_filter = st.radio(
                         "분류 필터",
                         options=filter_options,
                         horizontal=True,
+                        key="industry_filter",
                     )
-                    view_df = result_df if selected_filter == "전체" else result_df[result_df["분류"] == selected_filter]
+                    view_df = (
+                        result_df
+                        if selected_filter == "전체"
+                        else result_df[result_df["분류"] == selected_filter]
+                    )
 
-                    st.caption(f"표시 기사: {len(view_df)}건 / 전체 {len(result_df)}건")
+                    st.caption(f"표시: {len(view_df)}건 / 전체 {len(result_df)}건")
                     st.data_editor(
                         view_df,
                         column_config={
                             "분류": st.column_config.TextColumn("분류", width="small"),
                             "제목": st.column_config.TextColumn("기사 제목", width="large"),
-                            "키워드그룹": st.column_config.TextColumn("그룹", width="medium"),
-                            "검색키워드": st.column_config.TextColumn("키워드", width="medium"),
+                            "쿼리유형": st.column_config.TextColumn("유형", width="small"),
+                            "검색쿼리": st.column_config.TextColumn("검색쿼리", width="medium"),
                             "발행일": st.column_config.TextColumn("시간", width="small"),
                             "링크": st.column_config.LinkColumn("원문", display_text="클릭"),
                         },
@@ -209,23 +218,21 @@ else:
                         hide_index=True,
                     )
 
-                    # 워드 클라우드
                     if show_wc:
                         with st.expander("☁️ 주요 키워드 시각화 (Word Cloud)", expanded=False):
-                            wc_df = pd.DataFrame({"제목": view_df["제목"].tolist()})
-                            draw_wordcloud(wc_df)
+                            draw_wordcloud(pd.DataFrame({"제목": view_df["제목"].tolist()}))
 
                     csv = view_df.to_csv(index=False).encode("utf-8-sig")
                     st.download_button(
                         "💾 결과 저장 (CSV)",
                         csv,
-                        "youtube_industry_analysis.csv",
+                        "industry_analysis.csv",
                         "text/csv",
                     )
                 elif result_df is not None and result_df.empty:
-                    st.warning("수집된 기사가 없습니다. 키워드 그룹을 선택하고 다시 시도해 주세요.")
+                    st.warning("수집된 기사가 없습니다. 키워드를 바꿔서 다시 시도해 보세요.")
                 else:
-                    st.info("위 버튼을 눌러 크롤링을 시작하세요.")
+                    st.info("키워드를 입력하고 크롤링 시작 버튼을 눌러주세요.")
 
             # ── 일반 뉴스 탭 ──────────────────────────────────────────────
             else:
