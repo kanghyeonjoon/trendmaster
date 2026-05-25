@@ -45,9 +45,11 @@ except ImportError:
 #    - https://www.youtube.com/c/채널명
 # ============================================================
 CHANNEL_URLS = [
-    "https://www.youtube.com/@MrBeast",
-    "https://www.youtube.com/@mkbhd",
-    # 원하는 채널을 계속 추가하세요...
+    # 아래 예시를 지우고 원하는 채널 URL로 교체하세요
+    # 채널 페이지에서 주소창 URL을 그대로 복사하면 됩니다
+    "https://www.youtube.com/@mrbeast",
+    # "https://www.youtube.com/@채널핸들",
+    # "https://www.youtube.com/channel/UC...",
 ]
 
 # ============================================================
@@ -76,9 +78,16 @@ OUTPUT_PATH = os.path.join(desktop_path, OUTPUT_FILENAME)
 def fetch_video_list(channel_url: str) -> tuple[str, list[dict]]:
     """
     채널에서 영상 목록을 빠르게 가져옵니다 (extract_flat 사용).
+    /videos, 기본 URL, /streams 순서로 자동 시도합니다.
     반환: (채널명, [{'id', 'title', 'upload_date', 'view_count', 'thumbnail'}, ...])
     """
-    url = channel_url.rstrip("/") + "/videos"
+    base = channel_url.rstrip("/")
+    # 시도할 URL 형식 목록 (순서대로 시도)
+    urls_to_try = [
+        base + "/videos",   # 일반 영상 탭
+        base,               # 채널 기본 URL
+        base + "/streams",  # 라이브 탭 (일부 채널)
+    ]
 
     ydl_opts = {
         "extract_flat": "in_playlist",
@@ -88,8 +97,17 @@ def fetch_video_list(channel_url: str) -> tuple[str, list[dict]]:
         "ignoreerrors": True,
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
+    info = None
+    for url in urls_to_try:
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                result = ydl.extract_info(url, download=False)
+            # entries가 있어야 유효한 결과
+            if result and result.get("entries"):
+                info = result
+                break
+        except Exception:
+            continue
 
     if not info:
         return channel_url, []
