@@ -4,3 +4,7 @@ requests
 wordcloud
 matplotlib
 python-dateutil
+
+# youtube_scraper.py 의존성
+yt-dlp
+openpyxl
