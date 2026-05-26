@@ -227,6 +227,44 @@ def fetch_yt_channel(url: str, days_back: int, max_videos: int) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+@st.cache_data(ttl=1800, show_spinner=False)
+def discover_channels(keyword: str, max_results: int = 30) -> list[dict]:
+    """키워드 검색으로 관련 유튜브 채널 자동 발굴"""
+    if not HAS_YTDLP:
+        return []
+    ydl_opts = {
+        "extract_flat": True,
+        "quiet": True,
+        "no_warnings": True,
+        "ignoreerrors": True,
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"ytsearch{max_results}:{keyword}", download=False)
+        entries = [e for e in (info.get("entries") or []) if e] if info else []
+    except Exception:
+        return []
+
+    seen_urls = set()
+    channels = []
+    for e in entries:
+        ch_url  = e.get("channel_url") or e.get("uploader_url") or ""
+        ch_name = e.get("channel") or e.get("uploader") or ""
+        if not ch_url or ch_url in seen_urls:
+            continue
+        seen_urls.add(ch_url)
+        # @핸들 형식으로 정규화
+        if "/channel/" in ch_url or "/@" in ch_url:
+            pass
+        channels.append({
+            "name":         ch_name,
+            "url":          ch_url,
+            "sample_title": e.get("title", ""),
+            "view_count":   e.get("view_count") or 0,
+        })
+    return channels
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def fetch_news(keyword: str, region: str = "KR") -> pd.DataFrame:
     """Google News RSS로 키워드 관련 뉴스 수집"""
@@ -399,35 +437,70 @@ def fig_weekly_uploads(channel_dfs: dict[str, pd.DataFrame]) -> plt.Figure:
 #  사이드바 — 채널 관리
 # ════════════════════════════════════════════════════════════
 
-if "channels" not in st.session_state:
-    st.session_state.channels = load_channels()
-
-if "yt_data" not in st.session_state:
-    st.session_state.yt_data = {}   # {url: DataFrame}
+if "channels"      not in st.session_state: st.session_state.channels      = load_channels()
+if "yt_data"       not in st.session_state: st.session_state.yt_data       = {}
+if "last_collected" not in st.session_state: st.session_state.last_collected = None
+if "discover_res"  not in st.session_state: st.session_state.discover_res  = []
 
 with st.sidebar:
+
+    # ════════════════════════════════════════
+    #  🔍 키워드로 채널 자동 발굴
+    # ════════════════════════════════════════
+    st.markdown("## 🔍 채널 자동 발굴")
+    st.caption("키워드를 넣으면 관련 채널을 자동으로 찾아줍니다")
+
+    with st.form("discover_form", clear_on_submit=False):
+        disc_keyword = st.text_input("발굴 키워드", placeholder="예: 병원 마케팅")
+        disc_btn = st.form_submit_button("🔎 채널 찾기", use_container_width=True)
+
+    if disc_btn and disc_keyword:
+        with st.spinner(f"'{disc_keyword}' 관련 채널 탐색 중..."):
+            st.session_state.discover_res = discover_channels(disc_keyword, max_results=30)
+
+    if st.session_state.discover_res:
+        st.markdown(f"**발굴된 채널 {len(st.session_state.discover_res)}개** — 추가할 채널을 선택하세요")
+        existing_urls = {ch["url"] for ch in st.session_state.channels}
+        added_any = False
+        for i, ch in enumerate(st.session_state.discover_res):
+            already = ch["url"] in existing_urls
+            ca, cb = st.columns([4, 1])
+            ca.markdown(
+                f"{'✅' if already else '📺'} **{ch['name'][:18]}**  \n"
+                f"`{fmt_num(ch['view_count'])}회` | {ch['sample_title'][:25]}..."
+            )
+            if not already:
+                if cb.button("➕", key=f"disc_{i}", help="벤치마킹 채널로 추가"):
+                    st.session_state.channels.append({"name": ch["name"], "url": ch["url"]})
+                    save_channels(st.session_state.channels)
+                    added_any = True
+            else:
+                cb.markdown("✔")
+        if added_any:
+            st.rerun()
+
+    st.divider()
+
+    # ════════════════════════════════════════
+    #  📋 등록된 채널 관리
+    # ════════════════════════════════════════
     st.markdown("## 📋 벤치마킹 채널 관리")
 
-    # ── 채널 추가 ────────────────────────────────────────
     with st.form("add_channel", clear_on_submit=True):
         new_name = st.text_input("채널 별칭", placeholder="예: 경쟁사A")
-        new_url  = st.text_input("유튜브 채널 URL",
-                                  placeholder="https://www.youtube.com/@...")
-        submitted = st.form_submit_button("➕ 채널 추가", use_container_width=True)
-        if submitted and new_url:
+        new_url  = st.text_input("유튜브 채널 URL", placeholder="https://www.youtube.com/@...")
+        if st.form_submit_button("➕ 직접 추가", use_container_width=True) and new_url:
             name = new_name.strip() or new_url.split("@")[-1][:15]
             st.session_state.channels.append({"name": name, "url": new_url.strip()})
             save_channels(st.session_state.channels)
             st.success(f"'{name}' 추가됨!")
 
-    # ── 등록된 채널 목록 ─────────────────────────────────
     if st.session_state.channels:
         st.markdown("**등록된 채널**")
         to_remove = []
         for i, ch in enumerate(st.session_state.channels):
             col_a, col_b = st.columns([4, 1])
-            col_a.markdown(f"**{ch['name']}**  \n`{ch['url'][:35]}...`" if len(ch['url'])>35
-                           else f"**{ch['name']}**  \n`{ch['url']}`")
+            col_a.markdown(f"**{ch['name']}**  \n`{ch['url'][:30]}`")
             if col_b.button("🗑", key=f"del_{i}", help="삭제"):
                 to_remove.append(i)
         for i in reversed(to_remove):
@@ -439,17 +512,30 @@ with st.sidebar:
         st.info("채널을 추가하면 분석이 시작됩니다.")
 
     st.divider()
+
+    # ════════════════════════════════════════
+    #  ⚙️ 수집 설정 + 자동 수집
+    # ════════════════════════════════════════
     st.markdown("## ⚙️ 수집 설정")
     days_back  = st.slider("최근 며칠치 수집", 7, 180, 30, 7)
     max_videos = st.slider("채널당 최대 영상 수", 10, 200, 50, 10)
 
+    st.markdown("#### 🔄 자동 수집")
+    auto_collect = st.toggle("자동 수집 켜기", value=False, help="설정한 간격마다 자동으로 데이터를 갱신합니다")
+    if auto_collect:
+        auto_interval = st.selectbox("수집 간격", ["30분", "1시간", "3시간", "6시간", "12시간", "24시간"], index=1)
+        interval_map  = {"30분": 30, "1시간": 60, "3시간": 180, "6시간": 360, "12시간": 720, "24시간": 1440}
+        interval_min  = interval_map[auto_interval]
+        if st.session_state.last_collected:
+            elapsed = (datetime.now() - st.session_state.last_collected).total_seconds() / 60
+            remaining = max(0, interval_min - elapsed)
+            st.caption(f"마지막 수집: {st.session_state.last_collected.strftime('%H:%M')}  \n다음 수집까지: {int(remaining)}분")
+        else:
+            st.caption("아직 수집 기록 없음")
+
     st.divider()
     st.markdown("## 📰 뉴스 모니터링 키워드")
-    news_kw_raw = st.text_area(
-        "키워드 입력 (줄바꿈으로 구분)",
-        placeholder="병원 마케팅\n유튜브 알고리즘\n콘텐츠 트렌드",
-        height=100,
-    )
+    news_kw_raw   = st.text_area("키워드 입력 (줄바꿈으로 구분)", placeholder="병원 마케팅\n유튜브 알고리즘", height=100)
     news_keywords = [k.strip() for k in news_kw_raw.splitlines() if k.strip()]
 
     st.divider()
@@ -462,26 +548,49 @@ with st.sidebar:
 
 
 # ════════════════════════════════════════════════════════════
-#  데이터 수집 실행
+#  데이터 수집 실행 (수동 + 자동)
 # ════════════════════════════════════════════════════════════
 
-if collect_btn:
+def run_collect():
+    """채널 데이터 수집 공통 함수"""
     if not HAS_YTDLP:
         st.error("yt-dlp가 없습니다. `pip install yt-dlp` 실행 후 재시작하세요.")
-    else:
-        st.session_state.yt_data = {}
-        prog = st.progress(0, text="수집 시작...")
-        total = len(st.session_state.channels)
+        return
+    st.session_state.yt_data = {}
+    prog  = st.progress(0, text="수집 시작...")
+    total = len(st.session_state.channels)
+    for i, ch in enumerate(st.session_state.channels):
+        prog.progress(i / total, text=f"📡 [{ch['name']}] 수집 중... ({i+1}/{total})")
+        st.session_state.yt_data[ch["name"]] = fetch_yt_channel(ch["url"], days_back, max_videos)
+    st.session_state.last_collected = datetime.now()
+    prog.progress(1.0, text="✅ 수집 완료!")
+    import time; time.sleep(0.8); prog.empty()
+    total_v = sum(len(d) for d in st.session_state.yt_data.values())
+    st.success(f"총 {total_v}개 영상 수집 완료! ({st.session_state.last_collected.strftime('%H:%M')})")
 
-        for i, ch in enumerate(st.session_state.channels):
-            prog.progress((i) / total, text=f"📡 [{ch['name']}] 수집 중... ({i+1}/{total})")
-            df = fetch_yt_channel(ch["url"], days_back, max_videos)
-            st.session_state.yt_data[ch["name"]] = df
+# 수동 수집
+if collect_btn and st.session_state.channels:
+    run_collect()
 
-        prog.progress(1.0, text="✅ 수집 완료!")
-        import time; time.sleep(0.8)
-        prog.empty()
-        st.success(f"총 {sum(len(d) for d in st.session_state.yt_data.values())}개 영상 수집 완료!")
+# 자동 수집 — 인터벌 초과 시 자동 실행
+if (auto_collect
+        and st.session_state.channels
+        and st.session_state.last_collected is not None):
+    elapsed_min = (datetime.now() - st.session_state.last_collected).total_seconds() / 60
+    if elapsed_min >= interval_min:
+        st.toast(f"🔄 자동 수집 시작 ({auto_interval} 경과)")
+        run_collect()
+
+# 자동 수집 ON이면 페이지 자동 새로고침 (30초마다 체크)
+if auto_collect and st.session_state.channels:
+    import time
+    st_autorefresh_placeholder = st.empty()
+    # streamlit-autorefresh 없이 meta refresh로 대체
+    refresh_sec = min(interval_min * 60, 1800)   # 최대 30분
+    st_autorefresh_placeholder.markdown(
+        f'<meta http-equiv="refresh" content="{refresh_sec}">',
+        unsafe_allow_html=True
+    )
 
 
 # ════════════════════════════════════════════════════════════
