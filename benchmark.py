@@ -589,6 +589,7 @@ def run_collect():
     if not HAS_YTDLP:
         st.error("yt-dlp가 없습니다. `pip install yt-dlp` 실행 후 재시작하세요.")
         return
+    fetch_yt_channel.clear()   # ← 캐시 초기화 (이전 결과 삭제)
     st.session_state.yt_data = {}
     prog  = st.progress(0, text="수집 시작...")
     total = len(st.session_state.channels)
