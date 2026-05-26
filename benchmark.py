@@ -167,9 +167,22 @@ def save_channels(channels: list[dict]):
 #  데이터 수집
 # ════════════════════════════════════════════════════════════
 
+def _fetch_video_detail(video_id: str) -> dict:
+    """개별 영상 상세 정보 조회 (조회수·날짜 누락 시 보완용)"""
+    ydl_opts = {"quiet": True, "no_warnings": True, "skip_download": True, "ignoreerrors": True}
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+        return info or {}
+    except Exception:
+        return {}
+
+
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_yt_channel(url: str, days_back: int, max_videos: int) -> pd.DataFrame:
-    """yt-dlp로 채널 영상 목록 수집 → DataFrame"""
+    """yt-dlp로 채널 영상 목록 수집 → DataFrame
+    조회수·날짜가 없는 영상은 개별 조회로 자동 보완합니다.
+    """
     if not HAS_YTDLP:
         return pd.DataFrame()
 
@@ -198,12 +211,29 @@ def fetch_yt_channel(url: str, days_back: int, max_videos: int) -> pd.DataFrame:
 
     channel_name = info.get("channel") or info.get("uploader") or info.get("title") or url
     cutoff = datetime.now() - timedelta(days=days_back)
-    rows = []
+    entries = [e for e in (info.get("entries") or []) if e]
 
-    for e in (info.get("entries") or []):
-        if not e:
-            continue
-        ds = e.get("upload_date", "")
+    # ── 조회수·날짜 없는 영상 개별 보완 (최대 30개) ──────
+    needs_detail = [
+        e for e in entries
+        if e.get("id") and (not e.get("view_count") or not e.get("upload_date"))
+    ][:30]
+
+    detail_cache: dict[str, dict] = {}
+    for e in needs_detail:
+        detail_cache[e["id"]] = _fetch_video_detail(e["id"])
+
+    # ── 행 생성 ──────────────────────────────────────────
+    rows = []
+    for e in entries:
+        vid_id = e.get("id", "")
+        detail = detail_cache.get(vid_id, {})
+
+        # 조회수
+        view_count = e.get("view_count") or detail.get("view_count") or 0
+
+        # 날짜
+        ds = e.get("upload_date") or detail.get("upload_date") or ""
         upload_dt = None
         if ds:
             try:
@@ -213,15 +243,18 @@ def fetch_yt_channel(url: str, days_back: int, max_videos: int) -> pd.DataFrame:
             except ValueError:
                 pass
 
+        # 썸네일
+        thumbnail = e.get("thumbnail") or detail.get("thumbnail") or ""
+
         rows.append({
-            "channel":      channel_name,
-            "title":        e.get("title", ""),
-            "view_count":   e.get("view_count") or 0,
-            "upload_date":  upload_dt.strftime("%Y-%m-%d") if upload_dt else None,
-            "day_of_week":  DAY_KR[upload_dt.weekday()] if upload_dt else None,
-            "week":         upload_dt.strftime("%Y-W%U") if upload_dt else None,
-            "thumbnail":    e.get("thumbnail", ""),
-            "video_url":    f"https://www.youtube.com/watch?v={e.get('id','')}" if e.get("id") else "",
+            "channel":     channel_name,
+            "title":       e.get("title") or detail.get("title", ""),
+            "view_count":  view_count,
+            "upload_date": upload_dt.strftime("%Y-%m-%d") if upload_dt else None,
+            "day_of_week": DAY_KR[upload_dt.weekday()] if upload_dt else None,
+            "week":        upload_dt.strftime("%Y-W%U") if upload_dt else None,
+            "thumbnail":   thumbnail,
+            "video_url":   f"https://www.youtube.com/watch?v={vid_id}" if vid_id else "",
         })
 
     return pd.DataFrame(rows)
