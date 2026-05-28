@@ -6,8 +6,11 @@ Usage: set BOT_TOKEN env var, run this script, send any message to the bot.
 
 import os
 import httpx
+from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+
+load_dotenv()
 
 WEBHOOK_URL = os.environ.get(
     "MAKE_WEBHOOK_URL",
