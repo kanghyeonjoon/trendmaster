@@ -7,6 +7,8 @@ import dateutil.parser
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import platform
+import anthropic
+import os
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -82,7 +84,50 @@ def get_news(category_code, search_query=None, region="KR"):
         return None
 
 
-# 4. 워드 클라우드 그리는 함수
+# 4. AI 트렌드 요약 함수
+@st.cache_data(show_spinner=False)
+def get_ai_summary(headlines_text: str, category_name: str, api_key: str) -> str:
+    client = anthropic.Anthropic(api_key=api_key)
+    prompt = f"""다음은 '{category_name}' 분야의 최신 뉴스 헤드라인 목록입니다:
+
+{headlines_text}
+
+위 헤드라인들을 분석하여 다음 형식으로 답변해주세요:
+
+**오늘의 핵심 트렌드 3가지**
+1. ...
+2. ...
+3. ...
+
+**주목할 이슈**
+...
+
+한국어로, 간결하고 명확하게 작성해주세요."""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=600,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return message.content[0].text
+
+
+def show_ai_summary(df, category_name, api_key):
+    if df is None or df.empty:
+        st.warning("요약할 뉴스 데이터가 없습니다.")
+        return
+    headlines_text = "\n".join([f"- {t}" for t in df['제목'].head(30)])
+    with st.spinner("AI가 트렌드를 분석 중입니다..."):
+        try:
+            summary = get_ai_summary(headlines_text, category_name, api_key)
+            st.markdown(summary)
+        except anthropic.AuthenticationError:
+            st.error("API 키가 올바르지 않습니다. 사이드바에서 확인해주세요.")
+        except Exception as e:
+            st.error(f"요약 중 오류가 발생했습니다: {e}")
+
+
+# 5. 워드 클라우드 그리는 함수
 def draw_wordcloud(df):
     if df is not None and not df.empty:
         text = " ".join(df['제목'])  # 모든 제목을 한 문장으로 합침
@@ -114,12 +159,25 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption("추가 기능")
-    # 워드클라우드 토글 버튼
     show_wc = st.toggle("☁️ 워드 클라우드 보기", value=True)
 
     if st.button('새로고침 🔄', use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+
+    st.markdown("---")
+    st.caption("🤖 AI 요약 설정")
+    _secret_key = st.secrets.get("ANTHROPIC_API_KEY", "") if hasattr(st, "secrets") else ""
+    if _secret_key:
+        anthropic_api_key = _secret_key
+        st.success("API 키 연결됨", icon="✅")
+    else:
+        anthropic_api_key = st.text_input(
+            "Anthropic API Key",
+            type="password",
+            placeholder="sk-ant-...",
+            help="Claude AI 요약 기능에 사용됩니다."
+        )
 
 # 6. 탭 메뉴 구성 (미국 뉴스 추가됨!)
 tab_names = ["🔥 종합", "💰 경제", "💻 IT/과학", "💊 건강", "🇺🇸 미국 뉴스(US)"]
@@ -140,12 +198,19 @@ if search_keyword:
         draw_wordcloud(df)
 
     if df is not None:
+        # AI 트렌드 요약
+        with st.expander("🤖 AI 트렌드 요약", expanded=False):
+            if anthropic_api_key:
+                if st.button("요약 생성", key="summary_search"):
+                    show_ai_summary(df, f"'{search_keyword}' 검색", anthropic_api_key)
+            else:
+                st.info("사이드바에서 Anthropic API Key를 입력하면 AI 요약을 사용할 수 있습니다.")
+
         st.data_editor(
             df,
             column_config={"링크": st.column_config.LinkColumn("링크", display_text="이동")},
             use_container_width=True, hide_index=True
         )
-        # 엑셀 다운로드 버튼
         csv = df.to_csv(index=False).encode('utf-8-sig')
         st.download_button("💾 엑셀(CSV)로 저장", csv, "search_news.csv", "text/csv")
 
@@ -160,12 +225,20 @@ else:
                 df = get_news(codes[i], region="KR")
 
             if df is not None:
-                # 1. 워드 클라우드 (토글이 켜져 있으면)
+                # 1. AI 트렌드 요약
+                with st.expander("🤖 AI 트렌드 요약", expanded=False):
+                    if anthropic_api_key:
+                        if st.button("요약 생성", key=f"summary_{i}"):
+                            show_ai_summary(df, tab_names[i], anthropic_api_key)
+                    else:
+                        st.info("사이드바에서 Anthropic API Key를 입력하면 AI 요약을 사용할 수 있습니다.")
+
+                # 2. 워드 클라우드 (토글이 켜져 있으면)
                 if show_wc:
                     with st.expander("☁️ 주요 키워드 시각화 (Word Cloud)", expanded=True):
                         draw_wordcloud(df)
 
-                # 2. 뉴스 리스트
+                # 3. 뉴스 리스트
                 st.caption(f"수집된 기사: {len(df)}건")
                 st.data_editor(
                     df,
@@ -178,7 +251,7 @@ else:
                     hide_index=True
                 )
 
-                # 3. 엑셀 다운로드 버튼 (Top 3 중 마지막 기능!)
+                # 4. 엑셀 다운로드 버튼
                 csv = df.to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
                     label="💾 결과 파일로 저장 (Excel/CSV)",
