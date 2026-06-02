@@ -1,6 +1,4 @@
 streamlit
 pandas
-requests
-wordcloud
-matplotlib
+plotly
 python-dateutil
