@@ -24,6 +24,9 @@ HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history
 # 사용 모델 (비용 절감 우선)
 CLAUDE_MODEL = "claude-sonnet-4-6"
 
+# YouTube Data API
+YT_API_BASE = "https://www.googleapis.com/youtube/v3"
+
 # 병원 원장 타겟 소재 키워드 프리셋
 HOSPITAL_PRESETS = [
     "병원 경영", "병원 마케팅", "개원", "의료 정책",
@@ -115,6 +118,77 @@ def draw_wordcloud(df):
         ax.imshow(wc, interpolation='bilinear')
         ax.axis("off")  # 축 없애기
         st.pyplot(fig)
+
+
+# ───────────────────────────────────────────────
+#  YouTube Data API 연동 (유튜브 트렌드)
+# ───────────────────────────────────────────────
+def _yt_build_df(items):
+    """videos API 응답 items -> DataFrame (조회수 순)."""
+    rows = []
+    for it in items:
+        sn = it.get("snippet", {})
+        stt = it.get("statistics", {})
+        vid = it.get("id")
+        rows.append({
+            "제목": sn.get("title", ""),
+            "채널": sn.get("channelTitle", ""),
+            "조회수": int(stt.get("viewCount", 0)) if stt.get("viewCount") else 0,
+            "좋아요": int(stt.get("likeCount", 0)) if stt.get("likeCount") else 0,
+            "링크": f"https://www.youtube.com/watch?v={vid}",
+        })
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df = df.sort_values("조회수", ascending=False).reset_index(drop=True)
+    return df
+
+
+@st.cache_data(ttl=600)
+def yt_search_videos(api_key, query, region="KR", max_results=25):
+    """키워드로 영상 검색 후 조회수 통계까지 붙여 반환. (df, error)"""
+    if not api_key:
+        return None, "YouTube API 키가 필요합니다."
+    try:
+        # 1) 키워드로 영상 ID 검색 (조회수 순)
+        r = requests.get(f"{YT_API_BASE}/search", params={
+            "part": "snippet", "q": query, "type": "video",
+            "maxResults": max_results, "order": "viewCount",
+            "regionCode": region,
+            "relevanceLanguage": "ko" if region == "KR" else "en",
+            "key": api_key,
+        })
+        if r.status_code != 200:
+            return None, f"검색 실패: {r.status_code} - {r.text[:200]}"
+        ids = [it["id"]["videoId"] for it in r.json().get("items", [])
+               if it.get("id", {}).get("videoId")]
+        if not ids:
+            return pd.DataFrame(), None
+        # 2) 영상별 조회수/좋아요 통계 가져오기
+        r2 = requests.get(f"{YT_API_BASE}/videos", params={
+            "part": "snippet,statistics", "id": ",".join(ids), "key": api_key,
+        })
+        if r2.status_code != 200:
+            return None, f"통계 조회 실패: {r2.status_code} - {r2.text[:200]}"
+        return _yt_build_df(r2.json().get("items", [])), None
+    except Exception as e:
+        return None, str(e)
+
+
+@st.cache_data(ttl=600)
+def yt_popular_videos(api_key, region="KR", max_results=25):
+    """인기 급상승 영상 반환. (df, error)"""
+    if not api_key:
+        return None, "YouTube API 키가 필요합니다."
+    try:
+        r = requests.get(f"{YT_API_BASE}/videos", params={
+            "part": "snippet,statistics", "chart": "mostPopular",
+            "regionCode": region, "maxResults": max_results, "key": api_key,
+        })
+        if r.status_code != 200:
+            return None, f"불러오기 실패: {r.status_code} - {r.text[:200]}"
+        return _yt_build_df(r.json().get("items", [])), None
+    except Exception as e:
+        return None, str(e)
 
 
 # ───────────────────────────────────────────────
@@ -248,6 +322,10 @@ if "history" not in st.session_state:
     st.session_state.history = load_history()
 if "trend_titles" not in st.session_state:
     st.session_state.trend_titles = []
+if "yt_titles" not in st.session_state:
+    st.session_state.yt_titles = []
+if "yt_df" not in st.session_state:
+    st.session_state.yt_df = None
 
 
 # 5. 메인 화면 구성
@@ -267,6 +345,14 @@ with st.sidebar:
         help="기획·대본 생성에 사용됩니다. 입력값은 세션에만 보관됩니다.",
     )
     st.caption(f"모델: `{CLAUDE_MODEL}`")
+
+    # YouTube Data API 키
+    yt_api_key = st.text_input(
+        "YouTube API 키",
+        type="password",
+        value=os.environ.get("YOUTUBE_API_KEY", ""),
+        help="유튜브 트렌드(인기 영상 분석)에 사용됩니다. 무료로 발급 가능합니다.",
+    )
 
     st.markdown("---")
     st.subheader("🔍 트렌드 검색")
@@ -289,8 +375,8 @@ with st.sidebar:
 if st.session_state.get("preset_keyword") and not search_keyword:
     search_keyword = st.session_state.preset_keyword
 
-# 6. 상위 탭: 트렌드 / 기획·대본 / 히스토리
-main_tabs = st.tabs(["📰 트렌드", "🎬 기획·대본", "🗂️ 히스토리"])
+# 6. 상위 탭: 뉴스 트렌드 / 유튜브 트렌드 / 기획·대본 / 히스토리
+main_tabs = st.tabs(["📰 뉴스 트렌드", "▶️ 유튜브 트렌드", "🎬 기획·대본", "🗂️ 히스토리"])
 
 # ===== 탭 1: 트렌드 =====
 with main_tabs[0]:
@@ -350,15 +436,75 @@ with main_tabs[0]:
                         key=f"dl_{codes[i]}"
                     )
 
-# ===== 탭 2: 기획·대본 =====
+# ===== 탭 2: 유튜브 트렌드 =====
 with main_tabs[1]:
+    st.subheader("▶️ 유튜브 트렌드 분석")
+    if not yt_api_key:
+        st.warning("사이드바에 **YouTube API 키**를 입력하면 유튜브 인기 영상을 분석할 수 있어요. (무료 발급)")
+
+    yc1, yc2 = st.columns([3, 1])
+    with yc1:
+        yt_query = st.text_input(
+            "유튜브 키워드 검색",
+            placeholder="예: 병원 마케팅, 개원 준비, 비급여",
+            key="yt_query",
+        )
+    with yc2:
+        yt_mode = st.radio("모드", ["키워드 검색", "인기 급상승"], key="yt_mode")
+
+    if st.button("🔎 유튜브 분석", type="primary", key="yt_run"):
+        if not yt_api_key:
+            st.error("사이드바에 YouTube API 키를 먼저 입력해 주세요.")
+        else:
+            with st.spinner("유튜브 데이터를 가져오는 중..."):
+                if yt_mode == "인기 급상승":
+                    ydf, yerr = yt_popular_videos(yt_api_key)
+                elif not yt_query.strip():
+                    ydf, yerr = None, "검색할 키워드를 입력해 주세요."
+                else:
+                    ydf, yerr = yt_search_videos(yt_api_key, yt_query.strip())
+            if yerr:
+                st.error(yerr)
+            elif ydf is not None and not ydf.empty:
+                st.session_state.yt_df = ydf
+                st.session_state.yt_titles = ydf["제목"].tolist()
+            elif ydf is not None:
+                st.info("결과가 없습니다. 다른 키워드로 시도해 보세요.")
+
+    ydf = st.session_state.yt_df
+    if ydf is not None and not ydf.empty:
+        st.caption(f"인기 영상 {len(ydf)}건 · 조회수 순 정렬")
+        if show_wc:
+            with st.expander("☁️ 인기 영상 제목 워드클라우드", expanded=False):
+                draw_wordcloud(ydf)
+        st.data_editor(
+            ydf,
+            column_config={
+                "제목": st.column_config.TextColumn("영상 제목", width="large"),
+                "채널": st.column_config.TextColumn("채널", width="medium"),
+                "조회수": st.column_config.NumberColumn("조회수", format="%d"),
+                "좋아요": st.column_config.NumberColumn("좋아요", format="%d"),
+                "링크": st.column_config.LinkColumn("영상", display_text="보기"),
+            },
+            use_container_width=True, hide_index=True,
+        )
+        st.caption("💡 마음에 드는 영상 제목을 '🎬 기획·대본' 탭에서 소재로 선택할 수 있어요.")
+        csv = ydf.to_csv(index=False).encode("utf-8-sig")
+        st.download_button("💾 결과 CSV 저장", csv, "youtube_trend.csv", "text/csv", key="dl_yt")
+
+# ===== 탭 3: 기획·대본 =====
+with main_tabs[2]:
     st.subheader("✍️ 소재 선택")
 
     col_a, col_b = st.columns([1, 1])
     with col_a:
-        # 트렌드에서 수집한 제목 중 고르기
-        title_options = ["(직접 입력)"] + st.session_state.trend_titles
-        picked = st.selectbox("트렌드 기사에서 소재 고르기", title_options)
+        # 뉴스/유튜브 트렌드에서 수집한 제목 중 고르기
+        news_opts = [f"📰 {t}" for t in st.session_state.trend_titles]
+        yt_opts = [f"▶️ {t}" for t in st.session_state.yt_titles]
+        title_options = ["(직접 입력)"] + news_opts + yt_opts
+        picked = st.selectbox("트렌드에서 소재 고르기 (뉴스·유튜브)", title_options)
+        if picked != "(직접 입력)":
+            picked = picked[2:].strip()  # 앞의 아이콘 제거
         if picked != "(직접 입력)":
             st.session_state.selected_topic = picked
     with col_b:
@@ -443,8 +589,8 @@ with main_tabs[1]:
             "script.txt", "text/plain", key="dl_script"
         )
 
-# ===== 탭 3: 히스토리 =====
-with main_tabs[2]:
+# ===== 탭 4: 히스토리 =====
+with main_tabs[3]:
     st.subheader("🗂️ 생성 히스토리")
     if not st.session_state.history:
         st.info("아직 저장된 기획·대본이 없습니다. '기획·대본' 탭에서 대본을 생성하면 자동 저장됩니다.")
