@@ -1,7 +1,7 @@
 import requests
 
 # Make.com 웹훅 → SOLAPI 문자 발송 시나리오
-DEFAULT_WEBHOOK = "https://hook.eu2.make.com/k2jfe47yd2lpv967fga27nflwvlf1ssg"
+DEFAULT_WEBHOOK = "https://hook.eu2.make.com/x0z34wfmmeukk2os8hquo48wzt7tr0hm"
 # 발신번호는 Make 시나리오의 SOLAPI 모듈에 고정되어 있음 (변경은 Make에서)
 SENDER_NUMBER = "01080649300"
 
