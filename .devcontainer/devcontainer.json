@@ -1,0 +1,13 @@
+{
+  "name": "trendmaster",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "forwardPorts": [8501],
+  "portsAttributes": {
+    "8501": {
+      "label": "뉴스 트렌드 마스터 + CRM",
+      "onAutoForward": "openBrowserOnce"
+    }
+  },
+  "postCreateCommand": "pip install -r requirements.txt",
+  "postAttachCommand": "streamlit run app.py --server.headless true"
+}
