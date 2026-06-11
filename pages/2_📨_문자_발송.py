@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 
 from crm_data import load_customers
+from crm_sms import DEFAULT_WEBHOOK, SENDER_NUMBERS, render_message, send_sms, message_type
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -12,21 +13,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Make.com 웹훅 → SOLAPI 문자 발송 시나리오
-DEFAULT_WEBHOOK = "https://hook.eu2.make.com/k2jfe47yd2lpv967fga27nflwvlf1ssg"
-SENDER_NUMBERS = ["01099168760", "01080649300"]  # SOLAPI에 등록된 발신번호
 
-
-# 2. 메시지 템플릿 치환
-def render_message(template, row):
-    msg = template
-    for key in ["고객명", "회사명", "등급", "담당자", "지역"]:
-        if key in row:
-            msg = msg.replace("{" + key + "}", str(row[key]))
-    return msg
-
-
-# 3. 메인 화면
+# 2. 메인 화면
 st.title("📨 문자 발송")
 st.caption("CRM 고객을 선택해 Make.com 자동화(SOLAPI)로 문자를 보냅니다.")
 st.markdown("---")
@@ -81,10 +69,8 @@ template = st.text_area(
     height=120,
 )
 
-# 바이트 수 안내 (한글 2byte 기준, 90byte 초과 시 LMS 과금)
 sample_msg = render_message(template, targets.iloc[0]) if len(targets) else template
-byte_len = len(sample_msg.encode("euc-kr", errors="replace"))
-msg_type = "SMS (단문)" if byte_len <= 90 else "LMS (장문)"
+byte_len, msg_type = message_type(sample_msg)
 st.caption(f"예상 길이: 약 {byte_len} byte → **{msg_type}** 요금 적용")
 
 # 6. 미리보기
@@ -108,14 +94,10 @@ tab_real, tab_test = st.tabs(["📤 실제 발송", "🧪 테스트 발송 (내 
 with tab_real:
     confirm = st.checkbox(f"위 {len(targets)}명에게 실제 문자를 발송하는 것에 동의합니다 (건당 과금)")
     if st.button("🚀 문자 발송하기", type="primary", disabled=not (confirm and len(targets))):
-        recipients = [
-            {"to": str(r["전화번호"]).replace("-", ""), "text": render_message(template, r)}
-            for _, r in targets.iterrows()
-        ]
         with st.spinner("발송 요청 중..."):
-            res = requests.post(webhook_url, json={"from": sender, "recipients": recipients}, timeout=30)
+            res, sent = send_sms(webhook_url, sender, targets, template)
         if res.status_code == 200:
-            st.success(f"✅ {len(recipients)}건 발송 요청 완료! Make 시나리오 실행 내역에서 결과를 확인하세요.")
+            st.success(f"✅ {sent}건 발송 요청 완료! Make 시나리오 실행 내역에서 결과를 확인하세요.")
         else:
             st.error(f"발송 실패 (HTTP {res.status_code}): {res.text}")
 
