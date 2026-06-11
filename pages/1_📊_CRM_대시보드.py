@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+
+from crm_data import load_customers, save_uploaded
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -14,37 +15,7 @@ st.set_page_config(
 )
 
 
-# 2. 샘플 데이터 생성 함수 (실제 데이터가 없을 때 사용)
-@st.cache_data
-def generate_sample_data(n=300, seed=42):
-    rng = np.random.default_rng(seed)
-    today = datetime.now()
-
-    regions = ["서울", "경기", "인천", "부산", "대구", "대전", "광주", "기타"]
-    grades = ["VIP", "Gold", "Silver", "Bronze"]
-    channels = ["홈페이지", "전화상담", "지인추천", "광고", "전시회"]
-    stages = ["리드", "상담중", "제안", "협상", "계약완료", "이탈"]
-    managers = ["김민수", "이서연", "박지훈", "최유진", "정도현"]
-
-    data = {
-        "고객명": [f"고객{i+1:03d}" for i in range(n)],
-        "회사명": [f"{rng.choice(['한빛', '미래', '대한', '글로벌', '스마트'])}{rng.choice(['상사', '테크', '물산', '산업', '솔루션'])}" for _ in range(n)],
-        "지역": rng.choice(regions, n, p=[0.30, 0.25, 0.08, 0.12, 0.07, 0.06, 0.05, 0.07]),
-        "등급": rng.choice(grades, n, p=[0.10, 0.25, 0.35, 0.30]),
-        "유입채널": rng.choice(channels, n),
-        "영업단계": rng.choice(stages, n, p=[0.25, 0.20, 0.15, 0.10, 0.22, 0.08]),
-        "담당자": rng.choice(managers, n),
-        "누적매출": (rng.gamma(2, 1500, n)).round(-1).astype(int),  # 만원 단위
-        "가입일": [today - timedelta(days=int(d)) for d in rng.uniform(0, 730, n)],
-        "최근거래일": [today - timedelta(days=int(d)) for d in rng.uniform(0, 180, n)],
-    }
-    df = pd.DataFrame(data)
-    df["가입일"] = pd.to_datetime(df["가입일"]).dt.date
-    df["최근거래일"] = pd.to_datetime(df["최근거래일"]).dt.date
-    return df
-
-
-# 3. 메인 화면
+# 2. 메인 화면
 st.title("📊 CRM 대시보드")
 st.markdown("---")
 
@@ -54,13 +25,12 @@ with st.sidebar:
     uploaded = st.file_uploader("고객 데이터 업로드 (CSV)", type="csv",
                                 help="컬럼: 고객명, 회사명, 지역, 등급, 유입채널, 영업단계, 담당자, 누적매출, 가입일, 최근거래일")
     if uploaded:
-        df = pd.read_csv(uploaded)
-        df["가입일"] = pd.to_datetime(df["가입일"]).dt.date
-        df["최근거래일"] = pd.to_datetime(df["최근거래일"]).dt.date
+        df = save_uploaded(pd.read_csv(uploaded))
         st.success(f"업로드 완료: {len(df)}건")
     else:
-        df = generate_sample_data()
-        st.info("샘플 데이터를 표시 중입니다. CSV를 업로드하면 실제 데이터로 전환됩니다.")
+        df, is_uploaded = load_customers()
+        if not is_uploaded:
+            st.info("샘플 데이터를 표시 중입니다. CSV를 업로드하면 실제 데이터로 전환됩니다.")
 
     st.markdown("---")
     st.header("🔍 필터")
