@@ -2,7 +2,8 @@ import requests
 
 # Make.com 웹훅 → SOLAPI 문자 발송 시나리오
 DEFAULT_WEBHOOK = "https://hook.eu2.make.com/k2jfe47yd2lpv967fga27nflwvlf1ssg"
-SENDER_NUMBERS = ["01099168760", "01080649300"]  # SOLAPI에 등록된 발신번호
+# 발신번호는 Make 시나리오의 SOLAPI 모듈에 고정되어 있음 (변경은 Make에서)
+SENDER_NUMBER = "01080649300"
 
 
 # 메시지 템플릿 치환 ({고객명}, {회사명} 등)
@@ -14,14 +15,21 @@ def render_message(template, row):
     return msg
 
 
-# 대상 DataFrame을 웹훅 페이로드로 변환해 발송 요청
-def send_sms(webhook_url, sender, targets, template):
-    recipients = [
-        {"to": str(r["전화번호"]).replace("-", ""), "text": render_message(template, r)}
-        for _, r in targets.iterrows()
-    ]
-    res = requests.post(webhook_url, json={"from": sender, "recipients": recipients}, timeout=30)
-    return res, len(recipients)
+# 수신자별로 {to, text} 평탄 JSON을 웹훅에 1건씩 POST (시나리오가 1건=1실행 처리)
+def send_sms(webhook_url, targets, template):
+    sent, failed = 0, []
+    for _, r in targets.iterrows():
+        to = str(r["전화번호"]).replace("-", "")
+        payload = {"to": to, "text": render_message(template, r)}
+        try:
+            res = requests.post(webhook_url, json=payload, timeout=30)
+            if res.status_code == 200:
+                sent += 1
+            else:
+                failed.append(f"{to} (HTTP {res.status_code})")
+        except requests.RequestException as e:
+            failed.append(f"{to} ({e})")
+    return sent, failed
 
 
 # SMS/LMS 예상 요금 구분 (한글 2byte 기준, 90byte 초과 시 LMS)

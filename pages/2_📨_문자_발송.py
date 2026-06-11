@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 
 from crm_data import load_customers
-from crm_sms import DEFAULT_WEBHOOK, SENDER_NUMBERS, render_message, send_sms, message_type
+from crm_sms import DEFAULT_WEBHOOK, SENDER_NUMBER, render_message, send_sms, message_type
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -33,8 +33,8 @@ if "전화번호" not in df.columns:
 with st.sidebar:
     st.header("⚙️ 발송 설정")
     webhook_url = st.text_input("Make 웹훅 URL", value=DEFAULT_WEBHOOK)
-    sender = st.selectbox("발신번호", SENDER_NUMBERS)
-    st.caption("발신번호는 SOLAPI에 사전 등록된 번호만 사용 가능합니다.")
+    st.text_input("발신번호", value=SENDER_NUMBER, disabled=True)
+    st.caption("발신번호는 Make 시나리오의 SOLAPI 모듈에 고정되어 있습니다. 변경하려면 Make에서 수정하세요.")
 
 # 4. 수신 대상 선택
 st.subheader("1️⃣ 수신 대상 선택")
@@ -95,19 +95,19 @@ with tab_real:
     confirm = st.checkbox(f"위 {len(targets)}명에게 실제 문자를 발송하는 것에 동의합니다 (건당 과금)")
     if st.button("🚀 문자 발송하기", type="primary", disabled=not (confirm and len(targets))):
         with st.spinner("발송 요청 중..."):
-            res, sent = send_sms(webhook_url, sender, targets, template)
-        if res.status_code == 200:
+            sent, failed = send_sms(webhook_url, targets, template)
+        if not failed:
             st.success(f"✅ {sent}건 발송 요청 완료! Make 시나리오 실행 내역에서 결과를 확인하세요.")
         else:
-            st.error(f"발송 실패 (HTTP {res.status_code}): {res.text}")
+            st.error(f"{sent}건 성공, {len(failed)}건 실패: {', '.join(failed[:5])}")
 
 with tab_test:
     test_number = st.text_input("테스트 수신번호 (본인 휴대폰)", placeholder="01012345678")
     if st.button("🧪 테스트 1건 발송", disabled=not test_number):
         test_row = targets.iloc[0] if len(targets) else df.iloc[0]
-        recipients = [{"to": test_number.replace("-", ""), "text": render_message(template, test_row)}]
+        payload = {"to": test_number.replace("-", ""), "text": render_message(template, test_row)}
         with st.spinner("발송 요청 중..."):
-            res = requests.post(webhook_url, json={"from": sender, "recipients": recipients}, timeout=30)
+            res = requests.post(webhook_url, json=payload, timeout=30)
         if res.status_code == 200:
             st.success("✅ 테스트 발송 요청 완료! 휴대폰을 확인해보세요.")
         else:

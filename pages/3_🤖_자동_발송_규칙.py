@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 from crm_data import load_customers
-from crm_sms import DEFAULT_WEBHOOK, SENDER_NUMBERS, render_message, send_sms, message_type
+from crm_sms import DEFAULT_WEBHOOK, SENDER_NUMBER, render_message, send_sms, message_type
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -30,7 +30,8 @@ if "전화번호" not in df.columns:
 with st.sidebar:
     st.header("⚙️ 발송 설정")
     webhook_url = st.text_input("Make 웹훅 URL", value=DEFAULT_WEBHOOK)
-    sender = st.selectbox("발신번호", SENDER_NUMBERS)
+    st.text_input("발신번호", value=SENDER_NUMBER, disabled=True)
+    st.caption("발신번호는 Make 시나리오에 고정되어 있습니다.")
 
 
 # 2. 규칙별 공통 UI (대상 미리보기 + 템플릿 + 발송)
@@ -57,11 +58,11 @@ def campaign_section(key, targets, default_template):
         confirm = st.checkbox(f"{len(targets)}명에게 실제 발송하는 것에 동의합니다 (건당 과금)", key=f"ok_{key}")
         if st.button("🚀 캠페인 발송", type="primary", disabled=not confirm, key=f"send_{key}"):
             with st.spinner("발송 요청 중..."):
-                res, sent = send_sms(webhook_url, sender, targets, template)
-            if res.status_code == 200:
+                sent, failed = send_sms(webhook_url, targets, template)
+            if not failed:
                 st.success(f"✅ {sent}건 발송 요청 완료!")
             else:
-                st.error(f"발송 실패 (HTTP {res.status_code}): {res.text}")
+                st.error(f"{sent}건 성공, {len(failed)}건 실패: {', '.join(failed[:5])}")
     else:
         st.info("조건에 맞는 고객이 없습니다.")
 
