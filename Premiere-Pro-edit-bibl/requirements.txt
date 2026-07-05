@@ -1,0 +1,9 @@
+# 음성인식 (윈도우/리눅스/맥 공통, CPU·NVIDIA GPU). 설치: pip install -r requirements.txt
+faster-whisper
+
+# numpy 는 함께 들어옵니다 (어/음 음향검출에 사용)
+numpy
+
+# 시스템 도구 (pip 아님):
+#   - ffmpeg : 윈도우=winget install Gyan.FFmpeg (또는 choco install ffmpeg)
+#              맥=brew install ffmpeg   (ffprobe 포함)
