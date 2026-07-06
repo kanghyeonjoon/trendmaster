@@ -190,8 +190,37 @@ def _normalize_model(model):
     return name
 
 
+def _enable_cuda_dlls():
+    """윈도우에서 pip로 설치한 NVIDIA 라이브러리(nvidia-cublas-cu12, nvidia-cudnn-cu12)의
+    DLL 폴더(site-packages/nvidia/*/bin·lib)를 로더 검색 경로에 등록한다.
+    pip 설치본은 PATH에 없어서 그냥은 ctranslate2가 cublas64_12.dll을 못 찾는다.
+    라이브러리가 없으면 조용히 넘어간다(그냥 CPU 폴백)."""
+    if os.name != "nt":
+        return
+    try:
+        import nvidia
+        roots = list(getattr(nvidia, "__path__", []))
+    except ImportError:
+        return
+    for root in roots:
+        try:
+            subs = os.listdir(root)
+        except OSError:
+            continue
+        for sub in subs:
+            for leaf in ("bin", "lib"):
+                d = os.path.join(root, sub, leaf)
+                if os.path.isdir(d):
+                    try:
+                        os.add_dll_directory(d)
+                    except (OSError, AttributeError):
+                        pass
+                    os.environ["PATH"] = d + os.pathsep + os.environ.get("PATH", "")
+
+
 def transcribe(audio, model=MODEL, initial_prompt=None, condition=False):
     # faster-whisper: 윈도우/리눅스/맥 공통.
+    _enable_cuda_dlls()
     from faster_whisper import WhisperModel
     name = _normalize_model(model)
 
