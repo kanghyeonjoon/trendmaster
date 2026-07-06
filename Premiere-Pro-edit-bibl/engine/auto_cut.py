@@ -336,6 +336,7 @@ def main():
     video = args[0]
     if not os.path.exists(video):
         print("파일 없음:", video); sys.exit(1)
+    SC.ensure_tools()   # ffmpeg 없으면 설치 안내 후 종료
 
     proj = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     CFG = CONFIG.load(preset, project_dir=proj)
@@ -359,6 +360,15 @@ def main():
     print(f"> 미디어 분석 중...  (설정 {src})")
     info = probe_media(video)
     print(f"   길이 {fmt(info['duration'])} · {info['width']}x{info['height']} · {info['fps']}fps")
+    if not info.get("has_audio", True):
+        print("\n[오류] 이 영상에는 오디오(소리) 트랙이 없습니다.")
+        print("       이 도구는 말소리를 기준으로 편집해서, 소리 없는 영상은 처리할 수 없어요.")
+        sys.exit(1)
+    if info.get("vfr_suspect"):
+        print("   [주의] 가변 프레임레이트(VFR) 영상으로 보입니다 — 뒤로 갈수록 컷/자막이")
+        print("          밀릴 수 있어요. 문제가 보이면 아래 명령으로 고정 레이트로 변환 후 다시:")
+        print(f"          ffmpeg -i \"{os.path.basename(video)}\" -r {int(round(info['fps']))}"
+              f" -c:a copy \"{base}_cfr.mp4\"")
 
     print("> 무음 감지 중...")
     sil_keeps = keep_ranges_from_silence(detect_silence(video), info["duration"])
@@ -622,4 +632,25 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except KeyboardInterrupt:
+        print("\n(중단됨)")
+        sys.exit(130)
+    except Exception:
+        import traceback
+        err = traceback.format_exc()
+        try:
+            _proj = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            _outdir = os.path.join(_proj, "output")
+            os.makedirs(_outdir, exist_ok=True)
+            _logp = os.path.join(_outdir, "_last_error.log")
+            open(_logp, "w", encoding="utf-8").write(err)
+            print("\n[오류] 처리 중 문제가 발생했습니다.")
+            print(f"       상세 로그: {_logp}")
+            print("       이 파일 내용을 보여주시면 원인을 빨리 찾을 수 있어요.")
+        except Exception:
+            print(err)
+        sys.exit(1)

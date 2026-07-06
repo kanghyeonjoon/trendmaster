@@ -104,6 +104,7 @@ def probe_media(path):
                 elif s.get("codec_type") == "audio" and "samplerate" not in info:
                     info["samplerate"] = int(s.get("sample_rate", 48000))
                     info["channels"] = int(s.get("channels", 2))
+                    info["has_audio"] = True
             if vbest is not None:
                 w, h = int(vbest["width"]), int(vbest["height"])
                 # 회전 메타데이터(폰/드론 세로 촬영: 가로로 저장 + '90도 돌려 표시')
@@ -121,7 +122,14 @@ def probe_media(path):
                 fps = _sane_fps(vbest.get("avg_frame_rate"), vbest.get("r_frame_rate"))
                 if fps:
                     info["fps"] = fps
+                # VFR(가변 프레임레이트) 의심 — 선언 레이트와 평균 레이트가 다름.
+                # 폰 촬영에 흔하며 컷/자막 싱크가 뒤로 갈수록 밀릴 수 있음 (경고용)
+                r_f = _sane_fps(vbest.get("r_frame_rate"))
+                a_f = _sane_fps(vbest.get("avg_frame_rate"))
+                if r_f and a_f and abs(r_f - a_f) / a_f > 0.01:
+                    info["vfr_suspect"] = True
             info.setdefault("samplerate", 48000); info.setdefault("channels", 2)
+            info.setdefault("has_audio", False)
             if "width" in info and "fps" in info:
                 return info
         except Exception:
@@ -131,9 +139,13 @@ def probe_media(path):
     err = r.stderr
     info = {}
     m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", err)
+    mv = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", err)
+    if not m or not mv:
+        raise SystemExit(f"[오류] 미디어 정보를 읽을 수 없습니다: {os.path.basename(path)}\n"
+                         "       파일이 손상됐거나 영상 파일이 아닐 수 있어요. "
+                         "다른 플레이어로 재생되는지 먼저 확인해 주세요.")
     h, mi, s = int(m.group(1)), int(m.group(2)), float(m.group(3))
     info["duration"] = h * 3600 + mi * 60 + s
-    mv = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", err)
     info["width"], info["height"] = int(mv.group(1)), int(mv.group(2))
     mr = re.search(r"rotation of (-?\d+(?:\.\d+)?) degrees", err)   # displaymatrix 회전
     if mr and int(round(float(mr.group(1)))) % 180 != 0:
@@ -148,9 +160,22 @@ def probe_media(path):
     if ma:
         info["samplerate"] = int(ma.group(1))
         info["channels"] = 1 if ma.group(2) == "mono" else (2 if ma.group(2) == "stereo" else int(ma.group(3)))
+        info["has_audio"] = True
     else:
         info["samplerate"], info["channels"] = 48000, 2
+        info["has_audio"] = False
     return info
+
+
+def ensure_tools():
+    """ffmpeg 존재 확인 — 없으면 설치 안내와 함께 친절하게 종료."""
+    if _shutil.which("ffmpeg") or os.path.exists(os.path.expanduser("~/bin/ffmpeg")):
+        return
+    raise SystemExit(
+        "[오류] ffmpeg를 찾을 수 없습니다. 이 도구의 필수 프로그램이에요.\n"
+        "       윈도우:  winget install Gyan.FFmpeg   (설치 후 새 명령창에서 다시 실행)\n"
+        "       맥:      brew install ffmpeg\n"
+        "       리눅스:  apt install ffmpeg")
 
 
 def detect_silence(path):
