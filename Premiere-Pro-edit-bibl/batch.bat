@@ -2,6 +2,8 @@
 REM batch.bat — 윈도우용. 폴더 안 모든 영상(mp4/mov/m4v/mkv)을 한 번에 컷편집
 REM 사용법:  batch.bat "영상폴더" [보수^|표준^|공격]
 setlocal enabledelayedexpansion
+chcp 65001 >nul
+set PYTHONUTF8=1
 set "SRC=%~1"
 set "PRESET=%~2"
 if "%PRESET%"=="" set "PRESET=표준"

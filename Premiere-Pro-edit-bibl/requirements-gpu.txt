@@ -1,0 +1,5 @@
+# NVIDIA GPU 가속 (선택) — 설치: pip install -r requirements-gpu.txt
+# 윈도우/리눅스에서 faster-whisper가 GPU(CUDA)를 쓰는 데 필요한 라이브러리.
+# 설치 후 별도 설정 없음 — 엔진이 자동으로 찾아 연결합니다.
+nvidia-cublas-cu12
+nvidia-cudnn-cu12

@@ -73,6 +73,18 @@ DEFAULTS = {
     "STT_MODEL": "large-v3",   # faster-whisper 크기 이름. 빠름=medium/small, 정확=large-v3
     "VERBATIM_PROMPT": "음... 어... 그러니까, 아 그게, 좀, 뭐, 약간, 막, 그래서, 어어, 음음, 이제, 뭔가. 네, 자.",
     "STT_HINTS": [],           # 받아쓰기에 알려줄 고유명사 (병원명·브랜드·사람이름 등)
+    "STT_VAD": True,           # 무음 구간 환청 억제 (VAD). 문장 끝이 잘리면 False로
+    "STT_BEAM": 5,             # 빔서치 크기 (기본 5 권장)
+    "STT_TEMPERATURE": None,   # None=폴백 사다리(권장). 0=결정적(반복환청 위험)
+
+    # 받아쓰기 사후 교정
+    "REPLACE_MAP": {},         # 확정 치환 {"잘못된표기": "올바른표기"} — 조사·두어절 오인식 대응
+    "REPLACE_JOSA": None,      # 치환 시 허용할 조사 목록 override (기본 내장 목록 사용)
+    "SCRIPT_FILE": "",         # 대본 파일 경로 — 있으면 대본 대조 교정 (CLI --script 가 우선)
+    "SCRIPT_MATCH_RATIO": 0.8, # 어절 치환 최소 유사도
+    "SCRIPT_ANCHOR_MIN": 3,    # 앵커로 인정할 연속 exact 일치 어절 수
+    "SCRIPT_GAP_MAX": 30,      # 앵커 사이 교정 허용 최대 어절 수
+    "SCRIPT_FIX_ENDINGS": False,  # True면 조사/어미 차이도 대본 쪽으로 (기본은 발화 존중)
 
     # 컷 다듬기 — 클릭/팝 제거는 프리미어 Cmd+Shift+D(기본 오디오 전환)로.
     # XML 페이드(키프레임)는 프리미어가 잘못 읽어 오디오를 음소거하는 버그가 있어 기본 끔.

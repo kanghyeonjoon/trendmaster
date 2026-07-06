@@ -249,20 +249,40 @@ def _enable_cuda_dlls():
                     os.environ["PATH"] = d + os.pathsep + os.environ.get("PATH", "")
 
 
-def transcribe(audio, model=MODEL, initial_prompt=None, condition=False):
+def transcribe(audio, model=MODEL, initial_prompt=None, condition=False,
+               vad=True, beam_size=5, temperature=None):
     # faster-whisper: 윈도우/리눅스/맥 공통.
     _enable_cuda_dlls()
     from faster_whisper import WhisperModel
     name = _normalize_model(model)
 
+    kw = dict(
+        language="ko",
+        word_timestamps=True,
+        condition_on_previous_text=condition,
+        initial_prompt=initial_prompt,
+        beam_size=beam_size,
+    )
+    if vad:
+        # 무음 구간 환청('...', 유령 문장) 억제. threshold를 기본 0.5→0.40으로
+        # 낮춰 작게 흐리는 문장 끝(어미)이 잘려나가지 않게 한다.
+        kw["vad_filter"] = True
+        kw["vad_parameters"] = dict(threshold=0.40, min_silence_duration_ms=500)
+    if temperature is not None:
+        kw["temperature"] = temperature   # 기본은 faster-whisper 폴백 사다리(0.0→1.0)
+
     def _run(device, compute_type):
         wm = WhisperModel(name, device=device, compute_type=compute_type)
-        segments, _info = wm.transcribe(
-            audio, language="ko",
-            word_timestamps=True,
-            condition_on_previous_text=condition,
-            initial_prompt=initial_prompt,
-        )
+        try:
+            # 긴 무음 내 환청 스킵 (구버전 faster-whisper엔 없는 옵션 → 폴백)
+            segments, _info = wm.transcribe(audio, hallucination_silence_threshold=2.0, **kw)
+            words = _collect(segments)
+        except TypeError:
+            segments, _info = wm.transcribe(audio, **kw)
+            words = _collect(segments)
+        return words
+
+    def _collect(segments):
         words = []
         for seg in segments:          # ← 실제 연산(encode)은 이 반복에서 일어남
             for w in (seg.words or []):
@@ -278,13 +298,18 @@ def transcribe(audio, model=MODEL, initial_prompt=None, condition=False):
     forced = os.environ.get("STT_DEVICE", "").strip().lower()
     print(f"> 받아쓰기 중... (모델 {name}, 로컬 faster-whisper)")
     if forced == "cpu":
+        print("   장치: CPU (STT_DEVICE로 강제)")
         return _run("cpu", "int8")
     if forced == "cuda":
+        print("   장치: GPU/CUDA (STT_DEVICE로 강제)")
         return _run("cuda", "float16")
     try:
-        return _run("cuda", "float16")
+        words = _run("cuda", "float16")
+        print("   장치: GPU(CUDA)로 전사 완료")
+        return words
     except Exception as e:
-        print(f"  (GPU 사용 불가 → CPU로 전환합니다: {type(e).__name__})")
+        print(f"   장치: GPU 사용 불가({type(e).__name__}) → CPU로 전사합니다 (느림)")
+        print("         GPU 가속을 켜려면:  pip install -r requirements-gpu.txt")
         return _run("cpu", "int8")
 
 

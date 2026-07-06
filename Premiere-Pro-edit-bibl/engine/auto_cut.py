@@ -14,6 +14,14 @@ auto_cut.py — 통합 자동 편집 엔진
 import sys, os, json, difflib, bisect
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# 한국어 윈도우 콘솔(cp949)에서도 출력이 크래시하지 않게 — 표시 불가 문자는 ?로.
+# (edit.bat이 UTF-8을 강제하지만, python을 직접 실행하는 경우의 안전망)
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except Exception:
+        pass
+
 import silence_cut as SC
 from silence_cut import (probe_media, detect_silence, keep_ranges_from_silence,
                          make_clean_audio, build_fcp7_xml, measure_loudness,
@@ -237,17 +245,61 @@ def find_choppy(keeps, window, max_cuts):
     return merged
 
 
-def get_transcript(video, audio_src, cache):
-    if os.path.exists(cache):
-        print("> 받아쓰기 캐시 사용 (재전사 생략)")
-        return [tuple(w) for w in json.load(open(cache, encoding="utf-8"))]
+def build_stt_prompt():
+    """받아쓰기 initial_prompt 조립 — 캐시 지문과 반드시 같은 소스를 쓰도록 단일화."""
     prompt = CFG["VERBATIM_PROMPT"]
     hints = CFG.get("STT_HINTS")
     if hints:   # 병원명·브랜드 등 고유명사를 받아쓰기 힌트로 주입 (config.json STT_HINTS)
         prompt = "고유명사: " + ", ".join(hints) + ". " + prompt
+    return prompt
+
+
+def stt_fingerprint():
+    """전사 결과를 좌우하는 설정의 지문. 바뀌면 캐시를 버리고 재전사한다.
+    (_cut_audio.wav는 매 실행 재생성이라 파일 지문 대신, wav 내용을 결정하는
+    DENOISE/DEESS 설정을 포함한다.)"""
+    import hashlib
+    payload = {
+        "model": CFG["STT_MODEL"],
+        "prompt": build_stt_prompt(),
+        "condition": True,
+        "vad": CFG.get("STT_VAD", True),
+        "beam": CFG.get("STT_BEAM", 5),
+        "temperature": CFG.get("STT_TEMPERATURE"),
+        "denoise": bool(CFG.get("DENOISE")),
+        "deess": bool(CFG.get("DEESS")),
+    }
+    return hashlib.sha1(json.dumps(payload, ensure_ascii=False,
+                                   sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def get_transcript(video, audio_src, cache, force=False):
+    meta_path = os.path.splitext(cache)[0] + ".meta.json"
+    fp = stt_fingerprint()
+    if os.path.exists(cache) and not force:
+        meta = None
+        if os.path.exists(meta_path):
+            try:
+                meta = json.load(open(meta_path, encoding="utf-8"))
+            except Exception:
+                meta = None
+        if meta is None:
+            # 구버전 캐시(메타 없음) — 재사용하되 현재 지문 채택(다음부턴 감지됨)
+            print("> 받아쓰기 캐시 사용 (구버전 캐시 — 설정 변경 감지 불가. 재전사하려면 --retranscribe)")
+            json.dump({"fingerprint": fp, "adopted": True},
+                      open(meta_path, "w", encoding="utf-8"))
+            return [tuple(w) for w in json.load(open(cache, encoding="utf-8"))]
+        if meta.get("fingerprint") == fp:
+            print("> 받아쓰기 캐시 사용 (재전사 생략)")
+            return [tuple(w) for w in json.load(open(cache, encoding="utf-8"))]
+        print("> 받아쓰기 설정 변경 감지 (모델/힌트/프롬프트 등) → 재전사")
     words = transcribe(audio_src, model=CFG["STT_MODEL"],
-                       initial_prompt=prompt, condition=True)
+                       initial_prompt=build_stt_prompt(), condition=True,
+                       vad=CFG.get("STT_VAD", True),
+                       beam_size=CFG.get("STT_BEAM", 5),
+                       temperature=CFG.get("STT_TEMPERATURE"))
     json.dump(words, open(cache, "w", encoding="utf-8"), ensure_ascii=False)
+    json.dump({"fingerprint": fp}, open(meta_path, "w", encoding="utf-8"))
     return words
 
 
@@ -270,8 +322,17 @@ def main():
         i = args.index("--preset")
         preset = args[i + 1]
         del args[i:i + 2]
+    script_path = None
+    if "--script" in args:
+        i = args.index("--script")
+        script_path = args[i + 1]
+        del args[i:i + 2]
+    force_stt = "--retranscribe" in args
+    if force_stt:
+        args.remove("--retranscribe")
     if not args:
-        print("사용: python3 auto_cut.py \"<원본영상>\" [--preset 보수|표준|공격]"); sys.exit(1)
+        print("사용: python3 auto_cut.py \"<원본영상>\" [--preset 보수|표준|공격]"
+              " [--script \"대본.txt\"] [--retranscribe]"); sys.exit(1)
     video = args[0]
     if not os.path.exists(video):
         print("파일 없음:", video); sys.exit(1)
@@ -320,8 +381,40 @@ def main():
         print(f"   음량 {loud['I']}→{after['I']} LUFS / 피크 {loud['TP']}→{after['TP']} dB")
     audio_for_stt = clean_audio or video
 
-    words = get_transcript(video, audio_for_stt, words_cache)
+    words = get_transcript(video, audio_for_stt, words_cache, force=force_stt)
     print(f"   받아쓴 단어 {len(words)}개")
+
+    # ── 받아쓰기 사후 교정: ① 용어사전 확정 치환 → ② 대본 대조 교정 ──
+    import script_align as SA
+    replace_log, script_log, script_cov = [], [], None
+    rmap = CFG.get("REPLACE_MAP") or {}
+    if rmap:
+        words, replace_log = SA.apply_replace_map(words, rmap, CFG.get("REPLACE_JOSA"))
+        if replace_log:
+            print(f"> 용어사전 치환 {len(replace_log)}건")
+    spath = script_path or CFG.get("SCRIPT_FILE")
+    if spath:
+        if not os.path.exists(spath):
+            print(f"   [주의] 대본 파일을 찾을 수 없어 대본 교정 건너뜀: {spath}")
+        else:
+            print("> 대본 대조 교정 중...")
+            toks = SA.load_script(spath)
+            words, script_log, script_cov = SA.correct(
+                words, toks,
+                ratio_min=CFG.get("SCRIPT_MATCH_RATIO", 0.8),
+                anchor_min=CFG.get("SCRIPT_ANCHOR_MIN", 3),
+                gap_max=CFG.get("SCRIPT_GAP_MAX", 30),
+                fix_endings=CFG.get("SCRIPT_FIX_ENDINGS", False))
+            if script_cov < 0.30:
+                print(f"   [주의] 대본 일치율 {script_cov*100:.0f}% — 다른 영상의 대본일 수 있어"
+                      " 교정을 건너뜀 (앵커 부족)")
+            else:
+                print(f"   대본 일치율 {script_cov*100:.0f}% · 표기 교정 {len(script_log)}건"
+                      " (즉흥 구간은 건드리지 않음)")
+    if replace_log or script_log:
+        rep_path = os.path.join(outdir, base + "_script_report.txt")
+        SA.write_report(rep_path, replace_log, script_log, script_cov or 0.0)
+        print(f"   교정 내역 → {os.path.basename(rep_path)}")
 
     # ── 제거 구간 계산 ──
     keeps = sil_keeps

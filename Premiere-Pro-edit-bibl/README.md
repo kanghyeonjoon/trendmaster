@@ -69,7 +69,9 @@ winget install Gyan.FFmpeg
 
 # 3) 파이썬 의존성
 pip install -r requirements.txt
-#   NVIDIA GPU로 가속하려면 CUDA 지원 버전 사용(선택). 없으면 CPU로 자동 동작.
+
+# 4) NVIDIA GPU 가속 (선택 — 전사가 몇 배 빨라짐. 없으면 CPU로 자동 동작)
+pip install -r requirements-gpu.txt
 
 # 실행은 edit.bat / batch.bat (아래 사용법 참고)
 ```
