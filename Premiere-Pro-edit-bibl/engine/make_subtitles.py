@@ -191,28 +191,41 @@ def _normalize_model(model):
 
 
 def transcribe(audio, model=MODEL, initial_prompt=None, condition=False):
-    # faster-whisper: 윈도우/리눅스/맥 공통. NVIDIA GPU 있으면 CUDA, 없으면 CPU.
+    # faster-whisper: 윈도우/리눅스/맥 공통.
     from faster_whisper import WhisperModel
     name = _normalize_model(model)
+
+    def _run(device, compute_type):
+        wm = WhisperModel(name, device=device, compute_type=compute_type)
+        segments, _info = wm.transcribe(
+            audio, language="ko",
+            word_timestamps=True,
+            condition_on_previous_text=condition,
+            initial_prompt=initial_prompt,
+        )
+        words = []
+        for seg in segments:          # ← 실제 연산(encode)은 이 반복에서 일어남
+            for w in (seg.words or []):
+                txt = w.word.strip()
+                if txt:
+                    words.append((w.start, w.end, txt))
+        return words
+
+    # 장치 선택:
+    #   STT_DEVICE 환경변수로 강제 가능(cpu/cuda). 없으면 GPU 먼저 시도 → 실패 시 CPU.
+    #   NVIDIA GPU가 있어도 cuBLAS/cuDNN DLL이 없으면 전사 '도중'에 터지므로,
+    #   모델 생성만이 아니라 실제 전사까지 감싸서 폴백한다.
+    forced = os.environ.get("STT_DEVICE", "").strip().lower()
     print(f"> 받아쓰기 중... (모델 {name}, 로컬 faster-whisper)")
+    if forced == "cpu":
+        return _run("cpu", "int8")
+    if forced == "cuda":
+        return _run("cuda", "float16")
     try:
-        wm = WhisperModel(name, device="auto", compute_type="auto")
-    except Exception:
-        # CUDA 라이브러리가 없는 순수 CPU 환경 폴백
-        wm = WhisperModel(name, device="cpu", compute_type="int8")
-    segments, _info = wm.transcribe(
-        audio, language="ko",
-        word_timestamps=True,
-        condition_on_previous_text=condition,
-        initial_prompt=initial_prompt,
-    )
-    words = []
-    for seg in segments:
-        for w in (seg.words or []):
-            txt = w.word.strip()
-            if txt:
-                words.append((w.start, w.end, txt))
-    return words
+        return _run("cuda", "float16")
+    except Exception as e:
+        print(f"  (GPU 사용 불가 → CPU로 전환합니다: {type(e).__name__})")
+        return _run("cpu", "int8")
 
 
 def map_words(words, mapper):
