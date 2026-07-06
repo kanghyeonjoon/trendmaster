@@ -39,6 +39,16 @@ if not os.path.exists(FFMPEG):
 # ─────────────────────────────────────────────────────────────
 
 
+def file_url(path):
+    """FCP7 XML <pathurl>용 파일 URL 생성 (윈도우/맥/리눅스).
+    윈도우: file://localhost/C%3A/Users/... (프리미어 자체 내보내기와 동일 형식)
+    맥/리눅스: file:///Users/... (기존 동작 유지)"""
+    p = path if re.match(r"^[A-Za-z]:[\\/]", path) else os.path.abspath(path)
+    if re.match(r"^[A-Za-z]:[\\/]", p):
+        return "file://localhost/" + quote(p.replace("\\", "/"), safe="/")
+    return "file://" + quote(p)
+
+
 def run(cmd):
     # 윈도우(cp949 등) 로케일에서도 ffmpeg 출력이 안 깨지게 UTF-8로 강제 디코딩.
     # ffmpeg 출력은 대부분 ASCII라, 디코딩 불가 바이트는 무시(replace)해도 파싱에 지장 없음.
@@ -211,7 +221,7 @@ def build_fcp7_xml(path, info, keeps, gain_db, seq_name, clean_audio=None, fade_
     sr, ch = info["samplerate"], info["channels"]
 
     abspath = os.path.abspath(path)
-    pathurl = "file://" + quote(abspath)
+    pathurl = file_url(abspath)
     fname = os.path.basename(abspath)
     gain_lin = round(10 ** (gain_db / 20.0), 6)
 
@@ -219,7 +229,7 @@ def build_fcp7_xml(path, info, keeps, gain_db, seq_name, clean_audio=None, fade_
     use_clean = clean_audio is not None
     if use_clean:
         a_abspath = os.path.abspath(clean_audio)
-        a_pathurl = "file://" + quote(a_abspath)
+        a_pathurl = file_url(a_abspath)
         a_fname = os.path.basename(a_abspath)
 
     def rate(tb=timebase):
