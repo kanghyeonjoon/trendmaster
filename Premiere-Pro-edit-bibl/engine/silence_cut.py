@@ -40,7 +40,10 @@ if not os.path.exists(FFMPEG):
 
 
 def run(cmd):
-    return subprocess.run(cmd, capture_output=True, text=True)
+    # 윈도우(cp949 등) 로케일에서도 ffmpeg 출력이 안 깨지게 UTF-8로 강제 디코딩.
+    # ffmpeg 출력은 대부분 ASCII라, 디코딩 불가 바이트는 무시(replace)해도 파싱에 지장 없음.
+    return subprocess.run(cmd, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace")
 
 
 import shutil as _shutil

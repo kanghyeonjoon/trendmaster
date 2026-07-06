@@ -35,7 +35,8 @@ def make_one(video, start, end, out):
     r = subprocess.run([FFMPEG, "-hide_banner", "-y", "-ss", f"{start:.3f}", "-i", video,
                         "-t", f"{dur:.3f}", "-vf", vf, "-af", af,
                         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                        "-c:a", "aac", "-b:a", "192k", out], capture_output=True, text=True)
+                        "-c:a", "aac", "-b:a", "192k", out], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
     return os.path.exists(out) and os.path.getsize(out) > 0
 
 
