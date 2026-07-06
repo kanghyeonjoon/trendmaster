@@ -14,7 +14,7 @@ make_subtitles.py — 컷된 타임라인에 정렬된 SRT 자막 생성 (로컬
   python3 make_subtitles.py "<원본영상.mp4>" [출력.srt]
 """
 
-import sys, os, subprocess
+import sys, os, re, subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from silence_cut import (probe_media, detect_silence, keep_ranges_from_silence,
@@ -51,10 +51,22 @@ END_CONN = ("는데", "은데", "ㄴ데", "지만", "니까", "어서", "아서"
             "다가", "거나", "든지", "든가", "려고", "면서", "으면", "면", "고", "서",
             "며", "게", "듯", "구")
 # 조사/평서 종결(보통의 경계)
-END_PART = ("은", "는", "이", "가", "을", "를", "에서", "으로", "에", "로", "와", "과",
-            "랑", "도", "만", "까지", "부터", "한테", "에게", "께", "의", "라고",
+END_PART = ("은", "는", "에서", "으로", "로", "와", "과",
+            "랑", "도", "만", "까지", "부터", "한테", "에게", "께", "라고",
             "이라고", "다고", "보다", "마다", "조차", "마저", "밖에",
             "다", "요", "까", "네", "음", "함", "죠", "지")
+
+# 뒤 어절과 결합이 강한 조사(주격 이/가, 목적격 을/를, 처소 에, 관형 의)
+# — '목적이 | 아니라', '일에 | 치이느라' 처럼 찢기면 어색 → 끊는 자리 비선호
+END_TIGHT = ("이", "가", "을", "를", "에", "의")
+
+# 의존명사(앞 관형형에 붙어야 함) — 줄 '머리'에 오면 어색: '나가실 | 때까지' 방지
+DEP_START = set((
+    "때 때가 때는 때도 때만 때까지 때부터 때마다 때문에 때문이죠 때문입니다 "
+    "수 수가 수는 수도 수밖에 것 것이 것을 것은 것도 것만 것처럼 것입니다 "
+    "거 거를 거는 게 줄 줄을 줄은 지 듯 듯이 만큼 정도 정도로 정도는 "
+    "뿐 뿐만 채 채로 척 체 데 데가 데는 바 바가 김에 대로"
+).split())
 
 
 # 관형형 어미(뒤 명사를 수식 → 줄 끝으로는 비선호)
@@ -71,6 +83,8 @@ def end_score(word):
         return 0
     if w.endswith((".", "?", "!", "…")):
         return 5
+    if w.endswith((",", "、")):        # 쉼표 = 화자가 실제로 쉰 자리 → 최우선 경계
+        return 4
     core = w.rstrip("\"'),.…?!").strip()
     if not core:
         return 5
@@ -80,10 +94,12 @@ def end_score(word):
         return 4
     if core.endswith(END_CONN):
         return 3
-    if core.endswith(ADNOMINAL_SUF):   # 관형형(뒤 명사 수식: 있는/하는/같은…) → 끊는 자리 비선호
-        return 1
+    if core.endswith(ADNOMINAL_SUF):   # 관형형(뒤 명사 수식: 있는/없는/하는…) → 끊으면 어색
+        return 0
     if core.endswith(END_PART):
         return 2
+    if core.endswith(END_TIGHT):       # 주격/목적격/처소 조사 → 뒤 어절과 찢지 않기
+        return 0
     return 1
 
 
@@ -107,9 +123,13 @@ def _split_sentences(words):
     return sents
 
 
-def _split_long(words, min_c, max_c, ideal=30):
+def _split_long(words, min_c, max_c, ideal=None):
     """한 문장이 길면 절·조사 경계로 '균형 있게' 분할(문장 경계는 안 넘음).
     DP로 모든 줄의 (길이 균형 + 경계 자연스러움)을 동시에 최적화한다."""
+    if ideal is None:
+        # 목표 줄길이는 한도에 비례 — 짧은 한도(세로 16자)에서 '꽉 채우기'가
+        # 자연스러운 경계보다 우선돼 어절이 어색하게 찢기는 것을 방지
+        ideal = min(30, max(10, round(max_c * 0.85)))
     m = len(words)
     def clen(i, j):
         return len(" ".join(w[2] for w in words[i:j]))
@@ -121,7 +141,12 @@ def _split_long(words, min_c, max_c, ideal=30):
             if L > max_c and i < j - 1:       # 한도 초과(어절 2개 이상) → 더 크게는 불가
                 break
             sc = end_score(words[j - 1][2])   # 이 줄의 끝 어절 자연스러움
-            pen = 1000 if sc < 0 else 40 if sc == 1 else 8 if sc == 2 else 2 if sc == 3 else 0
+            pen = (1000 if sc < 0 else 150 if sc == 0 else 40 if sc == 1
+                   else 8 if sc == 2 else 2 if sc == 3 else 0)
+            if j < m:                          # 다음 어절이 의존명사(때/수/것…)면 여기서 못 끊음
+                nxt = words[j][2].strip().rstrip("\"'),.…?!")
+                if nxt in DEP_START:
+                    pen += 800
             cost = (L - ideal) ** 2 + pen
             if dp[i] + cost < dp[j]:
                 dp[j] = dp[i] + cost; back[j] = i
@@ -288,7 +313,9 @@ def regroup(words, mapper, min_c=None, max_c=None, keep_whole=None):
 
 
 def sanitize(lines):
-    """시작시각 순 정렬 후, 역전·겹침을 제거하고 최소 표시시간을 보장."""
+    """시작시각 순 정렬 후, 역전·겹침을 제거하고 최소 표시시간을 보장.
+    글자 없는 자막('...' 등 환청 부호)은 버린다."""
+    lines = [l for l in lines if re.search(r"[0-9A-Za-z가-힣]", l[2])]
     lines = sorted(lines, key=lambda x: x[0])
     out = []
     prev_end = 0.0
