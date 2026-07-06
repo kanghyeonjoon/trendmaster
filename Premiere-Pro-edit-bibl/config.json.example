@@ -9,5 +9,10 @@
   "FILLER_PHRASES": ["그러니까", "그니까", "뭐", "뭔가", "막", "약간", "좀"],
   "TARGET_LUFS": -14.0,
   "STT_MODEL": "large-v3",
-  "CROSSFADE_FRAMES": 0
+  "CROSSFADE_FRAMES": 0,
+
+  "_자막_줄길이": "한 자막 글자수. 세로(9:16) 영상은 지정 없으면 자동 8~16자(한 줄), 가로는 25~35자.",
+  "SUB_MIN_CHARS": 8,
+  "SUB_MAX_CHARS": 16,
+  "SUB_KEEP_WHOLE": 18
 }

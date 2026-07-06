@@ -61,21 +61,45 @@ FFPROBE = _shutil.which("ffprobe") or os.path.expanduser("~/bin/ffprobe")
 HAS_FFPROBE = os.path.exists(FFPROBE) if "/" in FFPROBE else bool(_shutil.which("ffprobe"))
 
 
+def _rate_value(v):
+    """'30000/1001' 또는 '29.97' → float fps. 실패 시 0."""
+    try:
+        if "/" in str(v):
+            num, den = str(v).split("/")
+            den = float(den)
+            return round(float(num) / den, 3) if den else 0.0
+        return round(float(v), 3)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _sane_fps(*cands):
+    """후보들 중 실제 프레임레이트로 말이 되는(8~240) 첫 값. 없으면 0.
+    일부 파일(DJI 등)은 r_frame_rate에 컨테이너 타임스케일(90000 등)이 들어와
+    그대로 쓰면 XML 타임베이스가 깨진다 → avg_frame_rate 우선 + 범위 검증."""
+    for c in cands:
+        f = _rate_value(c)
+        if 8 <= f <= 240:
+            return f
+    return 0.0
+
+
 def probe_media(path):
     """미디어 정보 파싱. ffprobe 있으면 정밀하게, 없으면 ffmpeg -i 파싱."""
     if HAS_FFPROBE:
         try:
             import json as _json
             r = run([FFPROBE, "-v", "error", "-show_entries",
-                     "format=duration:stream=codec_type,width,height,r_frame_rate,sample_rate,channels",
+                     "format=duration:stream=codec_type,width,height,r_frame_rate,avg_frame_rate,sample_rate,channels",
                      "-of", "json", path])
             d = _json.loads(r.stdout)
             info = {"duration": float(d["format"]["duration"])}
             for s in d["streams"]:
                 if s.get("codec_type") == "video":
                     info["width"] = int(s["width"]); info["height"] = int(s["height"])
-                    num, den = s["r_frame_rate"].split("/")
-                    info["fps"] = round(int(num) / int(den), 3)
+                    fps = _sane_fps(s.get("avg_frame_rate"), s.get("r_frame_rate"))
+                    if fps:
+                        info["fps"] = fps
                 elif s.get("codec_type") == "audio":
                     info["samplerate"] = int(s.get("sample_rate", 48000))
                     info["channels"] = int(s.get("channels", 2))
@@ -94,7 +118,11 @@ def probe_media(path):
     mv = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", err)
     info["width"], info["height"] = int(mv.group(1)), int(mv.group(2))
     mf = re.search(r"(\d+(?:\.\d+)?)\s*fps", err)
-    info["fps"] = float(mf.group(1))
+    fps = _sane_fps(mf.group(1) if mf else None)
+    if not fps:   # fps 표기가 이상하면 tbr(실제 재생 레이트)로 보정
+        mt = re.search(r"(\d+(?:\.\d+)?)\s*tbr", err)
+        fps = _sane_fps(mt.group(1) if mt else None) or 30.0
+    info["fps"] = fps
     ma = re.search(r"Audio:.*?(\d+) Hz.*?(mono|stereo|(\d+) channels)", err)
     if ma:
         info["samplerate"] = int(ma.group(1))

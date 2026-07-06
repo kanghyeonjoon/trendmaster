@@ -467,15 +467,25 @@ def main():
     print("> 자막(SRT) 생성 중...")
     mapper = build_mapper(keeps)
     sub_words = [w for w in words if not is_filler(w[2])]
-    lines = regroup(sub_words, mapper)
+    # 자막 줄 길이 — config.json의 SUB_MIN_CHARS/SUB_MAX_CHARS/SUB_KEEP_WHOLE 우선.
+    # 지정이 없고 세로 영상(9:16 등)이면 좁은 화면에서 한 줄로 나오게 짧게 잡는다.
+    sub_min = CFG.get("SUB_MIN_CHARS")
+    sub_max = CFG.get("SUB_MAX_CHARS")
+    sub_keep = CFG.get("SUB_KEEP_WHOLE")
+    if sub_max is None and info["height"] > info["width"]:
+        sub_min, sub_max, sub_keep = 8, 16, 18
+        print("   세로 영상 감지 → 자막 한 줄 16자 기준 (config.json SUB_MAX_CHARS 로 조절)")
+    lines = regroup(sub_words, mapper, min_c=sub_min, max_c=sub_max, keep_whole=sub_keep)
     write_srt(lines, srt_out)
 
-    # 자막 마감(한 줄 30자) + .vtt/.ass(비블 스타일) 한 번에
+    # 자막 마감(줄길이 안전망 + CPS) + .vtt/.ass(비블 스타일) 한 번에
     sub_extra = ""
     if CFG.get("POLISH_SUBTITLES"):
         try:
             import subtitle_polish as SP
             SP.FILL_GAPS = CFG.get("SUBTITLE_FILL_GAPS", True)   # 자막 빈칸 제거 여부
+            if CFG.get("SUB_MAX_LINE") or sub_keep:              # 줄길이 안전망도 같은 기준으로
+                SP.MAX_CHARS_LINE = CFG.get("SUB_MAX_LINE") or sub_keep
             cues = SP.polish(SP.parse_srt(srt_out))
             stem = os.path.splitext(srt_out)[0]
             SP.write_srt(cues, srt_out)

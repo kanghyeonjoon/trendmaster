@@ -132,8 +132,14 @@ def _split_long(words, min_c, max_c, ideal=30):
     return cuts
 
 
-def semantic_chunk(words, min_c=MIN_CHARS, max_c=MAX_CHARS, keep_whole=38,
+KEEP_WHOLE = 38   # 이 글자수 이하 문장은 통째로 한 자막
+
+
+def semantic_chunk(words, min_c=None, max_c=None, keep_whole=None,
                    max_dur=MAX_DUR, gap_split=GAP_SPLIT):
+    min_c = MIN_CHARS if min_c is None else min_c
+    max_c = MAX_CHARS if max_c is None else max_c
+    keep_whole = KEEP_WHOLE if keep_whole is None else keep_whole
     """문장 단위를 보존하며 자막 줄을 만든다.
     - 문장 끝(. ? !)을 넘겨서 합치지 않음 → 한 자막에 '앞문장 끝+뒷문장 시작'이 안 섞임
     - 짧은 문장은 묶고(≤max_c), 살짝 긴 문장(≤keep_whole)은 통째로, 긴 문장만 균형 분할."""
@@ -274,10 +280,10 @@ def map_words(words, mapper):
     return mapped
 
 
-def regroup(words, mapper):
-    """단어를 컷 타임라인으로 옮기고 의미 단위(25~35자)로 묶는다."""
+def regroup(words, mapper, min_c=None, max_c=None, keep_whole=None):
+    """단어를 컷 타임라인으로 옮기고 의미 단위(기본 25~35자)로 묶는다."""
     mapped = map_words(words, mapper)
-    lines = semantic_chunk(mapped)
+    lines = semantic_chunk(mapped, min_c=min_c, max_c=max_c, keep_whole=keep_whole)
     return sanitize(lines)
 
 
