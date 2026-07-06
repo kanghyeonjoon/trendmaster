@@ -241,8 +241,12 @@ def get_transcript(video, audio_src, cache):
     if os.path.exists(cache):
         print("> 받아쓰기 캐시 사용 (재전사 생략)")
         return [tuple(w) for w in json.load(open(cache, encoding="utf-8"))]
+    prompt = CFG["VERBATIM_PROMPT"]
+    hints = CFG.get("STT_HINTS")
+    if hints:   # 병원명·브랜드 등 고유명사를 받아쓰기 힌트로 주입 (config.json STT_HINTS)
+        prompt = "고유명사: " + ", ".join(hints) + ". " + prompt
     words = transcribe(audio_src, model=CFG["STT_MODEL"],
-                       initial_prompt=CFG["VERBATIM_PROMPT"], condition=True)
+                       initial_prompt=prompt, condition=True)
     json.dump(words, open(cache, "w", encoding="utf-8"), ensure_ascii=False)
     return words
 
