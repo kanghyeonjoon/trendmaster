@@ -90,7 +90,7 @@ def probe_media(path):
         try:
             import json as _json
             r = run([FFPROBE, "-v", "error", "-show_entries",
-                     "format=duration:stream=codec_type,width,height,r_frame_rate,avg_frame_rate,sample_rate,channels",
+                     "format=duration:stream=codec_type,width,height,r_frame_rate,avg_frame_rate,sample_rate,channels:stream_side_data=rotation",
                      "-of", "json", path])
             d = _json.loads(r.stdout)
             info = {"duration": float(d["format"]["duration"])}
@@ -105,7 +105,19 @@ def probe_media(path):
                     info["samplerate"] = int(s.get("sample_rate", 48000))
                     info["channels"] = int(s.get("channels", 2))
             if vbest is not None:
-                info["width"] = int(vbest["width"]); info["height"] = int(vbest["height"])
+                w, h = int(vbest["width"]), int(vbest["height"])
+                # 회전 메타데이터(폰/드론 세로 촬영: 가로로 저장 + '90도 돌려 표시')
+                # → 프리미어는 돌려서 보여주므로 시퀀스도 '보이는 방향' 크기로 만들어야 함
+                rot = 0
+                for sd in vbest.get("side_data_list", []) or []:
+                    if "rotation" in sd:
+                        try:
+                            rot = int(round(float(sd["rotation"])))
+                        except (ValueError, TypeError):
+                            pass
+                if rot % 180 != 0:
+                    w, h = h, w
+                info["width"], info["height"] = w, h
                 fps = _sane_fps(vbest.get("avg_frame_rate"), vbest.get("r_frame_rate"))
                 if fps:
                     info["fps"] = fps
@@ -123,6 +135,9 @@ def probe_media(path):
     info["duration"] = h * 3600 + mi * 60 + s
     mv = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", err)
     info["width"], info["height"] = int(mv.group(1)), int(mv.group(2))
+    mr = re.search(r"rotation of (-?\d+(?:\.\d+)?) degrees", err)   # displaymatrix 회전
+    if mr and int(round(float(mr.group(1)))) % 180 != 0:
+        info["width"], info["height"] = info["height"], info["width"]
     mf = re.search(r"(\d+(?:\.\d+)?)\s*fps", err)
     fps = _sane_fps(mf.group(1) if mf else None)
     if not fps:   # fps 표기가 이상하면 tbr(실제 재생 레이트)로 보정
