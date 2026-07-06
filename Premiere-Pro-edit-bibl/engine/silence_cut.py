@@ -94,15 +94,21 @@ def probe_media(path):
                      "-of", "json", path])
             d = _json.loads(r.stdout)
             info = {"duration": float(d["format"]["duration"])}
+            # 영상 스트림이 여러 개면(DJI 등: 본영상 + 저해상 미리보기) 가장 큰 것이 본영상
+            vbest = None
             for s in d["streams"]:
-                if s.get("codec_type") == "video":
-                    info["width"] = int(s["width"]); info["height"] = int(s["height"])
-                    fps = _sane_fps(s.get("avg_frame_rate"), s.get("r_frame_rate"))
-                    if fps:
-                        info["fps"] = fps
-                elif s.get("codec_type") == "audio":
+                if s.get("codec_type") == "video" and s.get("width"):
+                    if (vbest is None or
+                            int(s["width"]) * int(s["height"]) > int(vbest["width"]) * int(vbest["height"])):
+                        vbest = s
+                elif s.get("codec_type") == "audio" and "samplerate" not in info:
                     info["samplerate"] = int(s.get("sample_rate", 48000))
                     info["channels"] = int(s.get("channels", 2))
+            if vbest is not None:
+                info["width"] = int(vbest["width"]); info["height"] = int(vbest["height"])
+                fps = _sane_fps(vbest.get("avg_frame_rate"), vbest.get("r_frame_rate"))
+                if fps:
+                    info["fps"] = fps
             info.setdefault("samplerate", 48000); info.setdefault("channels", 2)
             if "width" in info and "fps" in info:
                 return info
