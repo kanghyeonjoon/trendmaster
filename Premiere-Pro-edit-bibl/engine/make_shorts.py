@@ -29,8 +29,10 @@ def make_one(video, start, end, out):
     dur = end - start
     if dur <= 0:
         return False
-    # 가로→세로 센터 크롭(9:16) + 1080x1920 + 음량 정리
-    vf = "crop=ih*9/16:ih:(iw-ih*9/16)/2:0,scale=1080:1920,setsar=1"
+    # 어느 방향 소스든 9:16 센터 크롭: 가로는 좌우를, 9:16보다 긴 세로는 위아래를 자름
+    # (기존 식은 세로 소스에서 크롭 폭이 소스 폭을 넘어 ffmpeg 에러)
+    vf = ("crop=min(iw\\,ih*9/16):min(ih\\,iw*16/9):"
+          "(iw-min(iw\\,ih*9/16))/2:(ih-min(ih\\,iw*16/9))/2,scale=1080:1920,setsar=1")
     af = "highpass=f=80,acompressor=threshold=-20dB:ratio=3:attack=5:release=150:makeup=2,loudnorm=I=-14:TP=-1.5:LRA=11"
     r = subprocess.run([FFMPEG, "-hide_banner", "-y", "-ss", f"{start:.3f}", "-i", video,
                         "-t", f"{dur:.3f}", "-vf", vf, "-af", af,

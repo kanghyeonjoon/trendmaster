@@ -59,6 +59,7 @@ td{{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}}
 <section><h2>추임새 ({len(report.get('추임새',[]))})</h2><table>{rows(report.get('추임새',[]))}</table></section>
 <section><h2>망설임 어/음 ({len(report.get('망설임',[]))})</h2><table>{rows(report.get('망설임',[]))}</table></section>
 <section><h2>더듬·중복 ({len(report.get('더듬/중복',[]))})</h2><table>{rows(report.get('더듬/중복',[]))}</table></section>
+<section><h2>표기 교정 — 용어사전·대본 대조 ({len(report.get('표기 교정',[]))})</h2><table>{rows(report.get('표기 교정',[]))}</table></section>
 <script>
 document.querySelectorAll('.tc').forEach(el=>el.addEventListener('click',()=>{{
   navigator.clipboard&&navigator.clipboard.writeText(el.textContent.split('~')[0]);

@@ -79,8 +79,9 @@ def s2ass(t):
 def normalize(text):
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"\s+([,.!?…])", r"\1", text)      # 부호 앞 공백 제거
-    text = text.replace("퍼센트", "%").replace("프로", "%") if False else text
-    text = re.sub(r"\s*%\s*", "%", text)
+    # 숫자 표기: '30 퍼센트'→'30%', '1퍼센트씩'→'1%씩' (숫자 뒤에서만 — '프로'는 직업 뜻과 겹쳐 제외)
+    text = re.sub(r"(\d+)\s*퍼센트", r"\1%", text)
+    text = re.sub(r"(\d)\s*%", r"\1%", text)          # 숫자와 % 사이 공백 제거
     return text
 
 

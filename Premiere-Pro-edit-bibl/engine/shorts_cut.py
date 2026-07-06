@@ -143,7 +143,8 @@ def main():
             print("필요 파일 없음:", p); sys.exit(2)
 
     info = probe_media(video); fps = info["fps"]
-    scale = round(SEQ_W / info["width"] * 100, 3)   # 가로 채우기(레터박스)
+    # 화면 채우기(cover): 가로 소스는 좌우, 9:16보다 긴 세로 소스는 위아래가 잘려 가득 참
+    scale = round(max(SEQ_W / info["width"], SEQ_H / info["height"]) * 100, 3)
     keeps = parse_keeps(cut_xml, fps)
     words = [tuple(w) for w in json.load(open(words_json, encoding="utf-8"))]  # 원본시각 (s,e,txt)
 

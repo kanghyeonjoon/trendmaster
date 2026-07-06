@@ -430,6 +430,8 @@ def main():
     keeps = sil_keeps
     removes = []
     report = {"추임새": [], "망설임": [], "더듬/중복": [], "숨소리": []}
+    report["표기 교정"] = ([(t, t, f"{old} → {new}") for t, old, new in replace_log] +
+                          [(t, t, f"{old} → {new}") for t, old, new, _r in script_log])
     sw = sorted(words, key=lambda w: w[0])
     fpad = CFG["FILLER_PAD"]
 

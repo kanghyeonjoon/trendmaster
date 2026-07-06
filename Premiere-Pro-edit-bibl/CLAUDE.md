@@ -17,3 +17,5 @@
 | 2026-06-14 | 자막 한줄30자+Pretendard Bold 스타일, 어/음 음향검출, 오디오후처리, 문맥필러+false-start, 전사export, 배치, HTML리포트 | engine 전반 | 로드맵 Task5~10 |
 | 2026-06-14 | 에이전트 5팀 전용도구 — analyze_video(프리셋추천)·make_shorts(9:16)·emphasis_subs(강조자막) + 스킬 강화(리텐션·정량검수) | engine, .claude | 에이전트별 디벨롭 |
 | 2026-06-14 | 끊김(클릭) 개선(비대칭패딩·미세컷절제·오디오페이드) + 숏폼 PD 에이전트(1분 쇼츠 5개 자동) | engine, .claude | 끊김 피드백 + 쇼츠 자동화 |
+| 2026-07-06 | 윈도우 이식 (faster-whisper·경로URL·cp949·GPU 폴백) + 회전/다중스트림/가짜fps 대응 + 세로영상 자막 한줄·자연 줄바꿈 | engine 전반, .bat | 윈도우 실사용 버그 |
+| 2026-07-06 | 자막 정확도 4중 방어선 — STT_HINTS·REPLACE_MAP·대본대조교정(script_align, --script)·VAD환청억제 + 캐시 지문화 + 에러가드/doctor + 쇼츠 세로크롭 | engine, config, check.bat | 오타 제로 기획서 1~3차 |
