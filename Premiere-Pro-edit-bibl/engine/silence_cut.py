@@ -286,7 +286,9 @@ def audio_fade_filter(dur_frames, fade_frames):
             "</parameter></effect></filter>")
 
 
-def build_fcp7_xml(path, info, keeps, gain_db, seq_name, clean_audio=None, fade_frames=0):
+def build_fcp7_xml(path, info, keeps, gain_db, seq_name, clean_audio=None, fade_frames=0,
+                   markers=None):
+    """markers: [(초, 이름, 코멘트)] — 컷 타임라인 기준. 프리미어 시퀀스 마커로 들어감."""
     fps = info["fps"]
     timebase = int(round(fps))
     ntsc = "TRUE" if abs(fps - timebase * 1000 / 1001) < 0.01 else "FALSE"
@@ -393,6 +395,18 @@ def build_fcp7_xml(path, info, keeps, gain_db, seq_name, clean_audio=None, fade_
           </clipitem>""")
 
     seq_dur = tl
+
+    # 시퀀스 마커 — 프리미어 타임라인에서 재테이크/디렉션/주의 구간으로 바로 점프
+    marker_xml = ""
+    if markers:
+        parts = []
+        for m_sec, m_name, m_comment in markers:
+            fr = max(0, min(f2frames(m_sec, fps), seq_dur - 1))
+            parts.append(f"    <marker><comment>{xesc(m_comment)}</comment>"
+                         f"<name>{xesc(m_name)}</name>"
+                         f"<in>{fr}</in><out>-1</out></marker>\n")
+        marker_xml = "".join(parts)
+
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xmeml>
 <xmeml version="5">
@@ -420,7 +434,7 @@ def build_fcp7_xml(path, info, keeps, gain_db, seq_name, clean_audio=None, fade_
         </track>
       </audio>
     </media>
-  </sequence>
+{marker_xml}  </sequence>
 </xmeml>
 """
     return xml, seq_dur

@@ -75,6 +75,10 @@ DEFAULTS = {
     "RETAKE_MIN_MATCH": 5,     # 앵커부터 이 어절 수 이상 이어서 다시 말해야 재테이크
     "RETAKE_TOKEN_SIM": 0.75,  # 어절쌍 인정 유사도(자모 기준)
 
+    # 프리미어 시퀀스 마커 — 재테이크/디렉션 의심/컷 촘촘 지점을 타임라인에 표시
+    "XML_MARKERS": True,
+    "DIRECTION_PHRASES": None,  # None=내장 목록("잠시만요","부탁드립니다" 등). 목록으로 교체 가능
+
     # 문맥 기반 필러 — '좀'이 '조금'의 뜻(좀 더/좀 많이)이면 살림(과제거 방지)
     "CONTEXT_FILLER": True,
 

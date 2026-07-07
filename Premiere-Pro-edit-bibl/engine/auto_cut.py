@@ -314,6 +314,51 @@ def find_choppy(keeps, window, max_cuts):
     return merged
 
 
+def cut_pos(t, keeps):
+    """원본 시각 → 컷(출력) 타임라인 시각. 제거 구간 안이면 그 컷 지점을 반환."""
+    acc = 0.0
+    for a, b in keeps:
+        if t <= a:
+            return acc
+        if t <= b:
+            return acc + (t - a)
+        acc += b - a
+    return acc
+
+
+def find_direction_talk(sw, keeps):
+    """컷에 살아남은 단어 중 촬영 디렉션 표현('잠시만요', '부탁드립니다' 등)을 찾는다.
+    자동 삭제는 위험(본편 멘트와 겹칠 수 있음) → 마커/리포트로 표시만 한다.
+    반환: [(원본시각, 원본끝, 주변 문맥 텍스트)] — 3초 안 인접 히트는 묶음."""
+    phrases = CFG.get("DIRECTION_PHRASES") or [
+        "잠시만요", "잠깐만요", "다시 갈게요", "다시 한번", "다시 한 번",
+        "한 번만", "한번만", "부탁드립니다", "부탁드릴게요", "읽을까요",
+        "해 주시겠어요", "해주시겠어요", "여기서부터", "여기부터", "괜찮으세요",
+        "쉬시고", "컷할게요",
+    ]
+    def kept(w):
+        mid = (w[0] + w[1]) / 2
+        return any(a <= mid <= b for a, b in keeps)
+
+    hits = []
+    n = len(sw)
+    for i, w in enumerate(sw):
+        pair = w[2] + (" " + sw[i + 1][2] if i + 1 < n else "")
+        if any(p in w[2] or p in pair for p in phrases) and kept(w):
+            hits.append(i)
+    groups, log = [], []
+    for i in hits:
+        if groups and sw[i][0] - sw[groups[-1][-1]][1] <= 3.0:
+            groups[-1].append(i)
+        else:
+            groups.append([i])
+    for g in groups:
+        lo, hi = max(0, g[0] - 2), min(n, g[-1] + 3)   # 앞뒤 문맥 살짝 포함
+        log.append((sw[g[0]][0], sw[g[-1]][1],
+                    " ".join(sw[x][2] for x in range(lo, hi))))
+    return log
+
+
 def build_stt_prompt():
     """받아쓰기 initial_prompt 조립 — 캐시 지문과 반드시 같은 소스를 쓰도록 단일화."""
     prompt = CFG["VERBATIM_PROMPT"]
@@ -612,13 +657,35 @@ def main():
     print(f"\n   총 제거: {fmt(removed)} ({removed/info['duration']*100:.1f}%)  "
           f"| 컷 {len(keeps)}개 | 최종 {fmt(kept)}")
 
+    # ── 검토 지점 수집: 자연스러움 주의(컷 타임라인) + 디렉션 의심(원본→컷 변환) ──
+    choppy = find_choppy(keeps, CFG["CHOPPY_WINDOW"], CFG["CHOPPY_MAX"])
+    direction_log = find_direction_talk(sw, keeps)
+    report["디렉션 의심"] = direction_log
+    if direction_log:
+        print(f"   디렉션 의심 {len(direction_log)}곳 (자동 삭제 안 함 — 마커/리포트로 표시)")
+
+    markers = []
+    if CFG.get("XML_MARKERS", True):
+        for s, e, txt in report.get("재테이크", []):
+            markers.append((cut_pos(s, keeps), "재테이크 제거됨",
+                            f"여기서 NG {fmt(e - s)} 잘림: {txt[:60]}"))
+        for s, e, txt in direction_log:
+            markers.append((cut_pos(s, keeps), "디렉션 의심",
+                            f"확인 필요: {txt[:60]}"))
+        for s, e, c in choppy:   # find_choppy는 이미 컷 타임라인 기준
+            markers.append((s, f"컷 촘촘({c})", "부자연스러울 수 있음 — 호흡 살릴지 확인"))
+        markers.sort()
+
     # ── XML 생성 ──
     print("> 프리미어 시퀀스(XML) 생성 중...")
     gain = compute_gain_db(loud)
     xml, seq_dur = build_fcp7_xml(video, info, keeps, gain, base + " [러프컷]",
                                   clean_audio=clean_audio,
-                                  fade_frames=CFG.get("AUDIO_FADE_FRAMES", 0))
+                                  fade_frames=CFG.get("AUDIO_FADE_FRAMES", 0),
+                                  markers=markers)
     open(xml_out, "w", encoding="utf-8").write(xml)
+    if markers:
+        print(f"   시퀀스 마커 {len(markers)}개 삽입 (프리미어 타임라인에서 바로 점프)")
 
     # ── 프레임 무결성 검증 ──
     issues = verify_keeps(keeps)
@@ -627,8 +694,7 @@ def main():
     else:
         print(f"   검증: 갭/겹침/길이오류 0 (컷 {len(keeps)}개)")
 
-    # ── 자연스러움 가드: 컷이 촘촘한 구간 경고 (잘라낸 뒤 부자연스러움 방지) ──
-    choppy = find_choppy(keeps, CFG["CHOPPY_WINDOW"], CFG["CHOPPY_MAX"])
+    # ── 자연스러움 가드 (choppy는 마커 수집 단계에서 계산됨) ──
     if choppy:
         print(f"   [주의] 자연스러움 주의: 컷이 촘촘한 구간 {len(choppy)}곳 → 리포트에서 확인 권장")
     rep_path = os.path.join(outdir, base + "_cut_report.txt")

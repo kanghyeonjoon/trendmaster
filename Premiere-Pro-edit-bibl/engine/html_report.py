@@ -60,6 +60,7 @@ td{{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}}
 <section><h2>망설임 어/음 ({len(report.get('망설임',[]))})</h2><table>{rows(report.get('망설임',[]))}</table></section>
 <section><h2>더듬·중복 ({len(report.get('더듬/중복',[]))})</h2><table>{rows(report.get('더듬/중복',[]))}</table></section>
 <section><h2>재테이크 — 앞 시도 제거, 마지막 테이크만 ({len(report.get('재테이크',[]))})</h2><table>{rows(report.get('재테이크',[]))}</table></section>
+<section><h2>디렉션 의심 — 삭제 안 함, 확인만 ({len(report.get('디렉션 의심',[]))})</h2><table>{rows(report.get('디렉션 의심',[]))}</table></section>
 <section><h2>표기 교정 — 용어사전·대본 대조 ({len(report.get('표기 교정',[]))})</h2><table>{rows(report.get('표기 교정',[]))}</table></section>
 <script>
 document.querySelectorAll('.tc').forEach(el=>el.addEventListener('click',()=>{{
