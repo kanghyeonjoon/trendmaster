@@ -359,6 +359,35 @@ def find_direction_talk(sw, keeps):
     return log
 
 
+def find_outro_tail(sw, keeps, duration):
+    """마무리 멘트('다음 영상에서 뵐게요' 등) 뒤에 남은 촬영 잡담을 찾는다 — 표시만.
+    반환: (잡담 시작, 끝, 미리보기 텍스트) 또는 None."""
+    phrases = CFG.get("OUTRO_PHRASES") or [
+        "다음 영상에서", "다음 시간에", "구독과 좋아요", "구독 좋아요",
+        "시청해 주셔서", "감사합니다", "마치겠습니다", "여기까지였습니다",
+    ]
+    zone = duration * 0.7   # 뒤쪽 30%에서만 (본편 중간의 '감사합니다' 오인 방지)
+    def kept(w):
+        mid = (w[0] + w[1]) / 2
+        return any(a <= mid <= b for a, b in keeps)
+
+    last_end = None
+    n = len(sw)
+    for i, w in enumerate(sw):
+        if w[0] < zone or not kept(w):
+            continue
+        pair = w[2] + (" " + sw[i + 1][2] if i + 1 < n else "")
+        if any(p in pair for p in phrases):
+            last_end = w[1]          # 가장 마지막 마무리 멘트 위치로 계속 갱신
+    if last_end is None:
+        return None
+    tail = [w for w in sw if kept(w) and w[0] > last_end + 1.0]
+    if len(tail) < 3:                # 마무리 뒤에 실질 발화가 거의 없으면 정상 종료
+        return None
+    preview = " ".join(w[2] for w in tail[:12]) + ("…" if len(tail) > 12 else "")
+    return (tail[0][0], tail[-1][1], preview)
+
+
 def build_stt_prompt():
     """받아쓰기 initial_prompt 조립 — 캐시 지문과 반드시 같은 소스를 쓰도록 단일화."""
     prompt = CFG["VERBATIM_PROMPT"]
@@ -664,6 +693,12 @@ def main():
     if direction_log:
         print(f"   디렉션 의심 {len(direction_log)}곳 (자동 삭제 안 함 — 마커/리포트로 표시)")
 
+    outro_tail = find_outro_tail(sw, keeps, info["duration"])
+    if outro_tail:
+        report["디렉션 의심"] = report["디렉션 의심"] + [
+            (outro_tail[0], outro_tail[1], "[본편 끝 이후 잡담] " + outro_tail[2])]
+        print(f"   본편 끝 이후 잡담 의심 — 마커로 표시 (확인 후 삭제 권장)")
+
     markers = []
     if CFG.get("XML_MARKERS", True):
         for s, e, txt in report.get("재테이크", []):
@@ -672,6 +707,9 @@ def main():
         for s, e, txt in direction_log:
             markers.append((cut_pos(s, keeps), "디렉션 의심",
                             f"확인 필요: {txt[:60]}"))
+        if outro_tail:
+            markers.append((cut_pos(outro_tail[0], keeps), "본편 끝 이후 잡담",
+                            f"마무리 멘트 뒤 잡담 의심 — 확인 후 삭제: {outro_tail[2][:50]}"))
         for s, e, c in choppy:   # find_choppy는 이미 컷 타임라인 기준
             markers.append((s, f"컷 촘촘({c})", "부자연스러울 수 있음 — 호흡 살릴지 확인"))
         markers.sort()
