@@ -66,6 +66,15 @@ DEFAULTS = {
     "FUZZY_REPEAT": True,    # 똑같은 말뿐 아니라 '비슷한 말 다시하기'(false-start)도 검출
     "FUZZY_RATIO": 0.7,      # 두 구절 유사도가 이 이상이면 앞 시도 제거
 
+    # 재테이크(NG 후 문장 전체 다시 읽기) — 앞 시도+사이 잡담·디렉션을 제거, 마지막 테이크만
+    "REMOVE_RETAKES": True,
+    "RETAKE_MIN_TOKENS": 4,    # 두 시도 사이 최소 어절 거리 (짧은 건 REPEAT가 처리)
+    "RETAKE_MAX_TOKENS": 60,   # 최대 어절 거리(사이 잡담 포함 NG 구간) — 너무 먼 반복은 무시
+    "RETAKE_WINDOW": 60.0,     # 두 시도 시작점 사이 최대 시간(초)
+    "RETAKE_PAUSE": 0.4,       # 재시작 직전 최소 호흡(초) — 강조용 의도적 반복 오탐 방지
+    "RETAKE_MIN_MATCH": 5,     # 앵커부터 이 어절 수 이상 이어서 다시 말해야 재테이크
+    "RETAKE_TOKEN_SIM": 0.75,  # 어절쌍 인정 유사도(자모 기준)
+
     # 문맥 기반 필러 — '좀'이 '조금'의 뜻(좀 더/좀 많이)이면 살림(과제거 방지)
     "CONTEXT_FILLER": True,
 

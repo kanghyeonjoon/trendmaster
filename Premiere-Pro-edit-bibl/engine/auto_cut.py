@@ -143,6 +143,75 @@ def find_repeats(sw):
     return ranges, rep
 
 
+def find_retakes(sw):
+    """전체 재테이크 감지 — 문장을 말하다 틀리고(NG) 잠시 후 처음부터 다시 말한 경우,
+    앞 시도(+사이 잡담·디렉션: '잠시만요', '한 번만 부탁드립니다' 등)를 제거하고
+    마지막 테이크만 남긴다. find_repeats(2~3어절 즉시 반복)보다 긴 단위를 다룬다.
+
+    판정: 같은 3어절 지점이 시간창 안에 다시 나타나고(앵커), 그 앵커에서부터
+          RETAKE_MIN_MATCH 어절 이상을 이어서 다시 말했으면 재테이크.
+          (앞 구간 전체와 비교하지 않으므로, 테이크 사이에 디렉션 대화가
+           길어도 희석되지 않는다 — 인터뷰형 촬영 대응)
+    가드: 재시작 직전 호흡(RETAKE_PAUSE)이 없으면 '강조를 위한 의도적 반복'으로
+          보고 건드리지 않는다."""
+    min_len   = CFG.get("RETAKE_MIN_TOKENS", 4)     # 두 시도 사이 최소 어절 거리
+    max_len   = CFG.get("RETAKE_MAX_TOKENS", 60)    # 최대 어절 거리(잡담 포함 NG 구간)
+    window_s  = CFG.get("RETAKE_WINDOW", 60.0)      # 두 시도 시작점 사이 최대 시간
+    pause_min = CFG.get("RETAKE_PAUSE", 0.4)
+    min_match = CFG.get("RETAKE_MIN_MATCH", 5)      # 앵커부터 이 어절 수 이상 재발화
+    sim_min   = CFG.get("RETAKE_TOKEN_SIM", 0.75)   # 어절쌍 인정 유사도(자모)
+    pad = CFG["FILLER_PAD"]
+
+    from script_align import _sim as jamo_sim
+    toks = [norm(t) for (_, _, t) in sw]
+    n = len(sw)
+    from collections import defaultdict
+    tri = defaultdict(list)
+    for i in range(n - 2):
+        if toks[i] and toks[i + 1] and toks[i + 2]:
+            tri[(toks[i], toks[i + 1], toks[i + 2])].append(i)
+
+    def match_len(i, j):
+        """앵커 (i,j)에서 나란히 걸으며 재발화가 몇 어절 이어지는지 (2연속 불일치면 중단)."""
+        k = matched = misses = 0
+        while i + k < j and j + k < n:
+            a, b = toks[i + k], toks[j + k]
+            if a == b or jamo_sim(a, b) >= sim_min:
+                matched += 1; misses = 0
+            else:
+                misses += 1
+                if misses >= 2:
+                    break
+            k += 1
+        return matched
+
+    candidates = []
+    for positions in tri.values():
+        for a in range(len(positions) - 1):
+            i, j = positions[a], positions[a + 1]   # 연속 등장 쌍 → 다중 테이크는 연쇄 처리
+            L = j - i
+            if L < min_len or L > max_len:
+                continue
+            if sw[j][0] - sw[i][0] > window_s:
+                continue
+            if sw[j][0] - sw[j - 1][1] < pause_min:  # 호흡 없이 이어 말함 → 강조 반복
+                continue
+            if match_len(i, j) >= min_match:
+                candidates.append((i, j))
+
+    removed = [False] * n
+    ranges, log = [], []
+    for i, j in sorted(candidates):                  # 이른(문장 시작) 앵커 우선
+        if any(removed[i:j]):
+            continue
+        for x in range(i, j):
+            removed[x] = True
+        s, e = sw[i][0], sw[j - 1][1]
+        ranges.append([max(0.0, s - pad), e + pad])
+        log.append((s, e, " ".join(sw[x][2] for x in range(i, j))))
+    return ranges, log
+
+
 def merge_ranges(ranges):
     ranges = sorted(ranges)
     out = []
@@ -461,6 +530,15 @@ def main():
         rep_ranges, rep_log = find_repeats(sw)
         removes += rep_ranges
         report["더듬/중복"] = rep_log
+
+    if CFG.get("REMOVE_RETAKES", True):
+        rt_ranges, rt_log = find_retakes(sw)
+        removes += rt_ranges
+        report["재테이크"] = rt_log
+        if rt_log:
+            cut_s = sum(e - s for s, e, _ in rt_log)
+            print(f"> 재테이크 {len(rt_log)}곳 감지 — 앞 시도 제거, 마지막 테이크만 남김"
+                  f" (약 {fmt(cut_s)} 절약)")
 
     if CFG.get("ACOUSTIC_FILLER") and clean_audio:
         try:

@@ -26,5 +26,8 @@
   "SCRIPT_FILE": "",
 
   "_환청억제": "무음 구간의 유령 자막 억제(VAD). 문장 끝이 잘려나가면 false로.",
-  "STT_VAD": true
+  "STT_VAD": true,
+
+  "_재테이크": "NG 후 다시 읽은 문장 — 앞 시도+디렉션 대화 제거. 끄려면 false. 덜 잡히면 RETAKE_MIN_MATCH를 4로.",
+  "REMOVE_RETAKES": true
 }
