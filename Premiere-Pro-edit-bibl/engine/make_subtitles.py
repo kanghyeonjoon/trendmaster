@@ -249,9 +249,41 @@ def _enable_cuda_dlls():
                     os.environ["PATH"] = d + os.pathsep + os.environ.get("PATH", "")
 
 
+def _auto_gpu_setup():
+    """NVIDIA GPU가 있는데 가속 라이브러리(pip)가 없으면 1회 자동 설치.
+    - NVIDIA 드라이버(nvidia-smi)가 없으면 = GPU 없음 → 아무것도 안 함
+    - 이미 설치돼 있으면 → 아무것도 안 함
+    - 설치 실패해도 조용히 CPU 폴백 (기존 동작 유지)"""
+    if os.name != "nt":
+        return
+    import shutil as _sh
+    if _sh.which("nvidia-smi") is None:
+        return
+    import importlib.util
+    if all(importlib.util.find_spec(m) for m in ("nvidia.cublas", "nvidia.cudnn")):
+        return
+    print("   NVIDIA GPU 감지 — 가속 라이브러리를 1회 자동 설치합니다 (약 1~2GB, 수 분)")
+    print("   설치 후 전사가 몇 배 빨라져요. 잠시만요...")
+    import subprocess
+    r = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet",
+                        "nvidia-cublas-cu12", "nvidia-cudnn-cu12"],
+                       capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
+    if r.returncode == 0:
+        print("   GPU 가속 라이브러리 설치 완료")
+    else:
+        print("   (자동 설치 실패 — 이번엔 CPU로 계속합니다."
+              " 수동 설치: pip install -r requirements-gpu.txt)")
+
+
 def transcribe(audio, model=MODEL, initial_prompt=None, condition=False,
-               vad=True, beam_size=5, temperature=None):
+               vad=True, beam_size=5, temperature=None, gpu_setup=True):
     # faster-whisper: 윈도우/리눅스/맥 공통.
+    if gpu_setup:
+        try:
+            _auto_gpu_setup()
+        except Exception:
+            pass   # 설치 문제로 전사 자체가 막히면 안 됨
     _enable_cuda_dlls()
     from faster_whisper import WhisperModel
     name = _normalize_model(model)

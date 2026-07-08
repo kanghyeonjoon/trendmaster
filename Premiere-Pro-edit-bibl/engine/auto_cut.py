@@ -440,7 +440,8 @@ def get_transcript(video, audio_src, cache, force=False):
                        initial_prompt=build_stt_prompt(), condition=True,
                        vad=CFG.get("STT_VAD", True),
                        beam_size=CFG.get("STT_BEAM", 5),
-                       temperature=CFG.get("STT_TEMPERATURE"))
+                       temperature=CFG.get("STT_TEMPERATURE"),
+                       gpu_setup=CFG.get("AUTO_GPU_SETUP", True))
     json.dump(words, open(cache, "w", encoding="utf-8"), ensure_ascii=False)
     json.dump({"fingerprint": fp}, open(meta_path, "w", encoding="utf-8"))
     return words

@@ -84,6 +84,7 @@ DEFAULTS = {
     "CONTEXT_FILLER": True,
 
     # 받아쓰기
+    "AUTO_GPU_SETUP": True,    # NVIDIA GPU 감지 시 가속 라이브러리 1회 자동 설치
     "STT_MODEL": "large-v3",   # faster-whisper 크기 이름. 빠름=medium/small, 정확=large-v3
     "VERBATIM_PROMPT": "음... 어... 그러니까, 아 그게, 좀, 뭐, 약간, 막, 그래서, 어어, 음음, 이제, 뭔가. 네, 자.",
     "STT_HINTS": [],           # 받아쓰기에 알려줄 고유명사 (병원명·브랜드·사람이름 등)
