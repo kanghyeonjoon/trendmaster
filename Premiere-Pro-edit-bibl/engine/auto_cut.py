@@ -805,7 +805,23 @@ def main():
             print(f"   리포트 : {os.path.basename(hp)}  (브라우저로 열어 검토)")
         except Exception as ex:
             print(f"   [주의] HTML 리포트 건너뜀: {ex}")
+    # ── 프리미어 원클릭 가져오기용: 방금 만든 산출물 경로를 남긴다 ──
+    # premiere/import_to_premiere.jsx 가 이 파일을 읽어 정확한 XML+SRT 쌍을 가져온다.
+    try:
+        latest = {
+            "xml": os.path.abspath(xml_out),
+            "srt": os.path.abspath(srt_out),
+            "wav": os.path.abspath(wav_out),
+            "seq_name": base + " [러프컷]",
+            "base": base,
+        }
+        json.dump(latest, open(os.path.join(outdir, "_latest.json"), "w", encoding="utf-8"),
+                  ensure_ascii=False, indent=2)
+    except Exception as ex:
+        print(f"   [주의] _latest.json 기록 건너뜀: {ex}")
+
     print(f"\n   프리미어 > 파일 > 가져오기 로 .xml 불러오세요.")
+    print(f"   (또는 프리미어 File > Scripts 에서 import_to_premiere.jsx 실행 → 한 번에 가져오기)")
     if len(keeps) > 1:
         print(f"   자연스러움 팁: 타임라인 전체 선택 → Cmd+Shift+D 하면")
         print(f"      모든 컷에 기본 오디오 전환이 적용돼 클릭음 없이 부드러워집니다.")
