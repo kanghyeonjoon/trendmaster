@@ -30,3 +30,4 @@
 | 2026-07-07 | 재테이크 자동 제거(find_retakes) — 3어절 앵커 + 연장매칭으로 NG구간(앞 시도+디렉션 대화) 제거, 마지막 테이크만. 실촬영 17.5분에서 NG 9곳/188초 검증 | auto_cut, config, 리포트 | 인터뷰형 촬영 NG 수작업 제거 부담 |
 | 2026-07-08 | GPU 라이브러리 자동설치 + 로컬 실행 수칙(환경문제 자가해결) | make_subtitles, CLAUDE.md | CPU 폴백으로 전사 느림 |
 | 2026-07-08 | 프리미어 원클릭 가져오기 스크립트(premiere/import_to_premiere.jsx) — _latest.json 읽어 XML 임포트 + createCaptionTrack로 자막 자동배치 + 시퀀스 열기. deep-research로 CEP/UXP·캡션API 검증. 편집로직은 파이썬 유지, CEP는 얇은 브리지 | premiere/, auto_cut | 프리미어 가져오기 수동단계 제거 |
+| 2026-07-09 | 잘못된 안내 정정 — 프리미어엔 File > Scripts 메뉴가 없어 .jsx 단독 실행 불가. README/auto_cut 완료메시지의 "스크립트 파일 실행" 안내 삭제 → 정확한 수동 3단계(XML 가져오기 + SRT 드래그 + CC 켜기)로 대체. import_to_premiere.jsx는 향후 CEP/UXP 패널용 로직으로 보관 명시. CEP 자동패널은 보류(EOL~2026.9, 클라우드 테스트 불가) | README, auto_cut, premiere/, CLAUDE | 실행 불가능한 안내 정정 |
