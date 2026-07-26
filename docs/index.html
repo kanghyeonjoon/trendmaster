@@ -19,10 +19,13 @@ const CONFIG = {
   // 비워두면: 데모 폼이 표시됩니다. 설정하면 하단 신청 섹션에 탈리폼이 임베드됩니다.
   TALLY_URL: "https://tally.so/r/dWPalq",
 
-  // 리드마그넷 칼럼 링크 3개 (비우면 버튼이 준비중 표시)
+  // 리드마그넷 칼럼 링크 3개 (전부 비어 있으면 칼럼 섹션 자체가 숨겨집니다)
   COLUMN_LINKS: ["", "", ""],
 
-  // "리얼후기 보러가기" 링크 (블로그·인스타 등)
+  // 인터뷰/포트폴리오 유튜브 링크 (비어 있으면 영상 블록이 숨겨집니다)
+  VIDEO_LINKS: [],
+
+  // "리얼후기 보러가기" 링크 (블로그·스레드 후기 원문 등)
   REVIEW_LINK: ""
 };
 </script>
@@ -334,48 +337,35 @@ footer{background:#111827;color:#8B93A3;font-size:12px;line-height:2;padding:36p
     <p class="t-md"><span class="blue">전환 = 매출</span>입니다.</p>
   </section>
 
-  <!-- ═══════════ [6] 숫자 성공사례 — 결과로 입막음 ═══════════ -->
-  <!-- TODO: 아래 3개 사례의 숫자·지역·진료과는 전부 예시값입니다. 반드시 실측값으로 교체 후 .sample-tag 삭제 -->
+  <!-- ═══════════ [6] 숫자 성공사례 — 결과로 입막음 (실측 후기 기반) ═══════════ -->
+  <!-- 실측 사례: 유재은님 후기 "유튜브 시작 한 달 만에 고가 상품 세일즈 성공, 첫 영상 조회수 2만 뷰" (컨설팅 전 273회 → 후 2.5만회) -->
+  <!-- TODO: 병원 실측 사례가 생기면 여기에 카드 추가 -->
   <section class="sec-alt center">
-    <p class="t-sm"><span data-brand>OO컴퍼니</span>와 함께 유튜브를 진행한 병원</p>
+    <p class="t-sm"><span data-brand>몽PD</span>의 컨설팅을 받은 채널</p>
     <h2 class="t-lg" style="margin-top:14px">지금은 <span class="blue">어떻게</span><br>달라졌을까요?</h2>
-    <span class="sample-tag">※ 아래 수치는 예시 화면입니다 (실측값 교체 예정)</span>
 
     <div class="case-card">
       <div class="info">
-        <div class="where">신사역 A 성형외과</div>
-        <div class="what">2년간 매출<br>약 <span class="blue">600%</span><br>성장</div>
+        <div class="where">연애 콘텐츠 채널 (컨설팅 실측)</div>
+        <div class="what">컨설팅 후 조회수<br><span class="blue">약 91배</span><br>상승</div>
+        <div class="sub">273회 → <b>2.5만회</b> · 한 달 만에 <b>고가 상품 세일즈 성공</b></div>
       </div>
       <div class="bars">
-        <div class="bar-col"><div class="bar before" style="height:20px"></div><div class="b-label">시작</div></div>
-        <div class="bar-col"><div class="bar after" style="height:100px"><i>600%</i></div><div class="b-label">2년 후</div></div>
+        <div class="bar-col"><div class="bar before" style="height:16px"><i>273회</i></div><div class="b-label">컨설팅 전</div></div>
+        <div class="bar-col"><div class="bar after" style="height:100px"><i>2.5만회</i></div><div class="b-label">컨설팅 후</div></div>
       </div>
     </div>
 
     <div class="case-card">
-      <div class="info">
-        <div class="where">천호동 B 피부과</div>
-        <div class="what">5개월 만에<br><span class="blue">매출 3배</span><br>상승</div>
-      </div>
-      <div class="bars">
-        <div class="bar-col"><div class="bar before" style="height:30px"></div><div class="b-label">시작</div></div>
-        <div class="bar-col"><div class="bar after" style="height:90px"><i>3배</i></div><div class="b-label">5개월 후</div></div>
-      </div>
-    </div>
-
-    <div class="case-card">
-      <div class="info">
-        <div class="where">부산 C 안과</div>
-        <div class="what">6개월 내<br><span class="blue">270건</span><br>문의 폭주</div>
-        <div class="sub">문의 후 수술까지 <b>40% 전환</b></div>
-      </div>
-      <div class="bars">
-        <div class="bar-col"><div class="bar before" style="height:18px"></div><div class="b-label">시작</div></div>
-        <div class="bar-col"><div class="bar after" style="height:100px"><i>270건</i></div><div class="b-label">6개월 후</div></div>
+      <div class="info" style="width:100%">
+        <div class="where">SNS 운영자 (블로그·인스타·유튜브)</div>
+        <div class="what">막막했던 채널 방향성,<br><span class="blue">벤치마킹 계정</span>과 함께<br>길을 잡다</div>
+        <div class="sub">계정 상태 · 알고리즘 · 제목 · 썸네일 <b>전면 점검</b></div>
       </div>
     </div>
 
     <p class="t-md blue" style="margin-top:44px">"과연, 우연일까요?"</p>
+    <p class="t-sm" style="margin-top:10px">분야는 달라도, <b>전환이 설계된 영상</b>의 원리는 같습니다.</p>
   </section>
 
   <!-- ═══════════ [7] 차별점 비교표 — 우위 시각화 ═══════════ -->
@@ -392,8 +382,7 @@ footer{background:#111827;color:#8B93A3;font-size:12px;line-height:2;padding:36p
         <h4 data-brand>OO컴퍼니</h4>
         <li>병원과 원장님의<br>강점이 부각된 유튜브</li>
         <li>고도로 설계된<br>브랜딩 컨텐츠</li>
-        <!-- TODO: 경력 연차 실제 값으로 교체 -->
-        <li>병원 마케팅<br>전문가 전담</li>
+        <li>미디어콘텐츠 제작<br>전문 PD 전담</li>
       </ul>
     </div>
     <p class="t-md" style="margin-top:52px">병원 유튜브는<br><span class="brkt">[ 조회수만 높다고 ]</span><br>좋은 것이 아닙니다</p>
@@ -412,44 +401,41 @@ footer{background:#111827;color:#8B93A3;font-size:12px;line-height:2;padding:36p
 
   <!-- ═══════════ [9] 사회적 증거 — 캡처 → 감성 후기 → 장문 인터뷰 ═══════════ -->
   <section class="sec-alt center">
-    <p class="t-md">지금 이 순간에도<br><span data-brand>OO컴퍼니</span>와 협업한 병원들은</p>
-    <p class="t-lg" style="margin-top:20px"><span class="blue">매출 상승의 현장을</span><br>직접 마주하고 있습니다</p>
+    <p class="t-md">지금 이 순간에도<br><span data-brand>몽PD</span>와 함께한 채널들은</p>
+    <p class="t-lg" style="margin-top:20px"><span class="blue">성장의 현장을</span><br>직접 마주하고 있습니다</p>
 
-    <p class="t-md" style="margin-top:52px">클라이언트분들의<br><span class="blue">실제 반응</span>입니다</p>
-    <!-- TODO: 실제 카톡 대화 캡처 이미지로 교체 (핵심 문장 빨간 박스 강조, 개인정보 블러) -->
-    <div class="capture-grid">
-      <div class="capture-ph">카톡 후기 캡처 자리 1<br>(실제 대화 스크린샷)</div>
-      <div class="capture-ph">카톡 후기 캡처 자리 2<br>(실제 대화 스크린샷)</div>
-      <div class="capture-ph">카톡 후기 캡처 자리 3<br>(실제 대화 스크린샷)</div>
-      <div class="capture-ph">카톡 후기 캡처 자리 4<br>(실제 대화 스크린샷)</div>
-    </div>
-    <span class="sample-tag">※ 실제 후기 캡처로 교체 예정 — 가짜 후기 게시 금지</span>
+    <p class="t-md" style="margin-top:52px">컨설팅 받으신 분들의<br><span class="blue">실제 반응</span>입니다</p>
+    <!-- TODO: 후기 원문 캡처 이미지가 준비되면 이 위치에 추가 (개인정보 블러 + 핵심 문장 강조) -->
 
-    <p class="t-md" style="margin-top:60px">병원 유튜브,</p>
-    <p class="t-lg" style="margin-top:12px">결국 <span class="brkt">[ 매출상승 ]</span>이<br>곧 <span class="brkt">[ 실력 ]</span>입니다</p>
-
-    <!-- 인스타 UI풍 감성 후기 카드 -->
-    <!-- TODO: 실제 고객 발언으로 교체 -->
+    <!-- 실제 후기 인용 (블로그·스레드 후기 원문에서 발췌) -->
     <div class="insta-card">
       <div class="insta-head"><span>♡</span><span>💬</span><span>✈</span></div>
-      <div class="review-pill"><span class="thumb">👍</span>다른 대행사와 다르게, 결과가 나올 때까지 같이 고민해주셨습니다</div>
-      <div class="review-pill"><span class="thumb">👍</span>설득이 아닌 마음을 움직인다는 말에 계약했어요</div>
-      <div class="review-pill"><span class="thumb">👍</span>영상 하나 바꿨을 뿐인데, 문의가 확 달라졌어요</div>
+      <div class="review-pill"><span class="thumb">👍</span>벤치마킹할 수 있는 계정들과 앞으로의 방향성, 어느 정도 길을 잡아주셔서 너무 좋았습니다!</div>
+      <div class="review-pill"><span class="thumb">👍</span>무료 컨설팅인데도 제 채널 분야를 열심히 조사해주신 부분이 너무나 인상 깊었어요</div>
+      <div class="review-pill"><span class="thumb">👍</span>지금까지 잘못된 부분을 한번 짚고 넘어갈 수 있던 기회라 좋았습니다</div>
     </div>
-    <span class="sample-tag">※ 예시 문구 — 실제 후기로 교체 예정</span>
     <div style="margin-top:26px"><a class="cta wide" href="#apply" data-review>리얼후기 보러가기</a></div>
 
-    <!-- 장문 인터뷰 (깊은 동일시) -->
-    <!-- TODO: 실제 인터뷰로 교체 -->
+    <p class="t-md" style="margin-top:60px">유튜브,</p>
+    <p class="t-lg" style="margin-top:12px">결국 <span class="brkt">[ 전환 ]</span>이<br>곧 <span class="brkt">[ 실력 ]</span>입니다</p>
+
+    <!-- 장문 후기 (깊은 동일시) — 실제 후기 원문 발췌 -->
     <div class="interview">
       <div class="who">
-        <div class="avatar">🧑‍⚕️</div>
-        <div><div class="name">개원 8개월차 ○○과 원장님</div></div>
+        <div class="avatar">💌</div>
+        <div><div class="name">연애 콘텐츠 채널 운영자님</div></div>
       </div>
-      <p class="quote">"이제 진료에만 집중하면 되겠어요!"</p>
-      <p>개원하고 몇 달 동안 '우리 병원의 차별점이 뭘까'라는 고민이 가장 컸는데요. 단순히 영상을 만들어주는 게 아니라, 어떻게 하면 신환 매출로 이어지는지 그 방향을 잡아주셔서 좋았습니다.</p>
+      <p class="quote">"유튜브 시작 한 달 만에 고가 상품 세일즈 성공, 첫 영상 조회수 2만 뷰 나왔어요!!"</p>
+      <p>저는 사실 몽PD님의 컨설팅 받기 전까지 유튜브는 시작조차 못했어요. 컨설팅 전 영상은 조회수 200대였는데, 컨설팅 후 영상은 2.5만 회를 넘겼습니다.</p>
     </div>
-    <span class="sample-tag">※ 예시 인터뷰 — 실제 인터뷰로 교체 예정</span>
+    <div class="interview">
+      <div class="who">
+        <div class="avatar">📱</div>
+        <div><div class="name">블로그·인스타·유튜브 운영자님</div></div>
+      </div>
+      <p class="quote">"운영할수록 어려웠던 방향성, 한번 길을 잡아주셨어요."</p>
+      <p>이번 컨설팅을 통해서 현재 채널의 상태, 알고리즘, 제목, 썸네일 등등 점검 받을 수 있어서 좋은 기회가 된 것 같아요. 앞으로 제작할 콘텐츠부터는 컨설팅 받은 방향으로 기획해서 영상 다시 제작해보려고 합니다!</p>
+    </div>
   </section>
 
   <!-- ═══════════ [10] FAQ — 결정 직전 핑계 제거 ═══════════ -->
@@ -471,8 +457,8 @@ footer{background:#111827;color:#8B93A3;font-size:12px;line-height:2;padding:36p
     </div>
   </section>
 
-  <!-- ═══════════ [11] 리드마그넷 — 공짜로 먼저 주기 ═══════════ -->
-  <section class="sec-alt center">
+  <!-- ═══════════ [11] 리드마그넷 — 공짜로 먼저 주기 (칼럼 링크 없으면 자동 숨김) ═══════════ -->
+  <section class="sec-alt center" id="magnet">
     <p class="t-sm" style="color:#9AA3B2">"정말 유튜브로 매출이 오를까?"</p>
     <p class="t-md" style="margin-top:8px">의구심이 드는 원장님이라면</p>
     <p class="t-lg" style="margin-top:28px">저희 칼럼을 딱 <span class="brkt">[ 세 편 ]</span>만<br>읽어보시기 바랍니다</p>
@@ -487,21 +473,21 @@ footer{background:#111827;color:#8B93A3;font-size:12px;line-height:2;padding:36p
 
   <!-- ═══════════ [12-a] 신뢰 지표 — 배지 + 영상 (폼 직전 신뢰 최고조) ═══════════ -->
   <section class="center">
-    <!-- TODO: 실측값으로 교체 -->
-    <span class="sample-tag">※ 아래 지표는 예시 화면입니다 (실측값 교체 예정)</span>
+    <!-- 실측 후기 기반 지표 (연애 콘텐츠 채널 컨설팅 사례) -->
     <div class="badges">
-      <div class="badge"><span class="k">평균 계약유지</span><span class="v">3-4년</span></div>
-      <div class="badge"><span class="k">최고 매출</span><span class="v">600%</span></div>
+      <div class="badge"><span class="k">컨설팅 후 조회수</span><span class="v">91배</span></div>
+      <div class="badge"><span class="k">첫 영상</span><span class="v">2.5만뷰</span></div>
     </div>
-    <p class="t-md"><span data-brand>OO컴퍼니</span>는<br><span class="blue">클라이언트의 만족도</span>로<br>말합니다</p>
+    <p class="t-md"><span data-brand>몽PD</span>는<br><span class="blue">클라이언트의 만족도</span>로<br>말합니다</p>
 
-    <p class="t-md" style="margin-top:60px"><span class="brkt">[ 실제 성공사례 인터뷰 영상 ]</span></p>
-    <p class="t-sm" style="margin-top:6px">※ 인터뷰는 계속해서 업데이트 예정입니다.</p>
-    <!-- TODO: 실제 유튜브 인터뷰 영상 임베드/썸네일로 교체 -->
-    <div class="video-ph"><div class="play">▶</div>원장님 인터뷰 영상 자리 1</div>
-    <div class="video-ph"><div class="play">▶</div>원장님 인터뷰 영상 자리 2</div>
+    <!-- 인터뷰 영상 블록 — CONFIG.VIDEO_LINKS가 비어 있으면 자동 숨김 -->
+    <div id="video-block">
+      <p class="t-md" style="margin-top:60px"><span class="brkt">[ 실제 인터뷰 영상 ]</span></p>
+      <p class="t-sm" style="margin-top:6px">※ 인터뷰는 계속해서 업데이트 예정입니다.</p>
+      <div id="video-list"></div>
+    </div>
 
-    <p class="t-lg" style="margin-top:64px">그 첫시작을<br><span class="blue" data-brand>OO컴퍼니</span>와 함께 하세요</p>
+    <p class="t-lg" style="margin-top:64px">그 첫시작을<br><span class="blue" data-brand>몽PD</span>와 함께 하세요</p>
   </section>
 
   <!-- ═══════════ [12-b] 최종 CTA 폼 — 마찰 0 ═══════════ -->
@@ -528,13 +514,10 @@ footer{background:#111827;color:#8B93A3;font-size:12px;line-height:2;padding:36p
 
   <!-- ═══════════ 푸터 — 회사 신원 공개 (신뢰 장치) ═══════════ -->
   <footer>
-    <!-- TODO: 실제 사업자 정보로 교체 — "숨지 않는 진짜 회사" 신뢰 장치이므로 반드시 기재 -->
-    회사명 : <span data-brand>OO컴퍼니</span><br>
-    사업자등록번호 : 000-00-00000 (교체 필요)<br>
-    대표 : (대표자명 교체 필요)<br>
-    전화 : 010-0000-0000 (교체 필요)<br>
-    주소 : (사업장 주소 교체 필요)<br>
-    Copyright © 2026 <span data-brand>OO컴퍼니</span>. All rights reserved.
+    <!-- TODO(선택): 대표 실명·주소·전화까지 공개하면 "숨지 않는 회사" 신뢰 장치가 더 강해짐 (교재 권장) -->
+    상호 : <span data-brand>몽PD</span> | 비즈니스 아나토미<br>
+    사업자등록번호 : 664-35-01649<br>
+    Copyright © 2026 비즈니스 아나토미. All rights reserved.
   </footer>
 </div>
 
@@ -574,12 +557,33 @@ footer{background:#111827;color:#8B93A3;font-size:12px;line-height:2;padding:36p
     alert('데모 화면입니다.\n탈리(Tally)폼 링크를 CONFIG.TALLY_URL에 넣으면 실제로 접수됩니다.');
   });
 
-  /* 칼럼 버튼 */
-  document.querySelectorAll('[data-column]').forEach(el => {
-    const url = CONFIG.COLUMN_LINKS[+el.dataset.column];
-    if (url) { el.href = url; el.target = '_blank'; el.rel = 'noopener'; }
-    else el.addEventListener('click', e => { e.preventDefault(); alert('칼럼 준비 중입니다.\nCONFIG.COLUMN_LINKS에 링크를 넣으면 연결됩니다.'); });
-  });
+  /* 칼럼 섹션: 링크가 하나도 없으면 섹션 숨김, 있으면 있는 버튼만 표시 */
+  if (!CONFIG.COLUMN_LINKS.some(Boolean)) {
+    document.getElementById('magnet').style.display = 'none';
+  } else {
+    document.querySelectorAll('[data-column]').forEach(el => {
+      const url = CONFIG.COLUMN_LINKS[+el.dataset.column];
+      if (url) { el.href = url; el.target = '_blank'; el.rel = 'noopener'; }
+      else el.style.display = 'none';
+    });
+  }
+
+  /* 영상 블록: 링크가 없으면 숨김, 있으면 유튜브 임베드 */
+  if (!CONFIG.VIDEO_LINKS.length) {
+    document.getElementById('video-block').style.display = 'none';
+  } else {
+    const list = document.getElementById('video-list');
+    CONFIG.VIDEO_LINKS.forEach(url => {
+      const m = url.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/);
+      if (!m) return;
+      const f = document.createElement('iframe');
+      f.src = 'https://www.youtube.com/embed/' + m[1];
+      f.loading = 'lazy';
+      f.allowFullscreen = true;
+      f.style.cssText = 'width:100%;aspect-ratio:16/9;border:0;border-radius:14px;margin-top:14px';
+      list.appendChild(f);
+    });
+  }
 
   /* 리얼후기 버튼 */
   document.querySelectorAll('[data-review]').forEach(el => {
