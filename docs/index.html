@@ -15,7 +15,10 @@ const CONFIG = {
   BRAND_NAME: "몽PD",
 
   // 무료 컨설팅 자리 현황 — 숫자만 바꾸면 페이지 전체에 반영됩니다
-  SLOTS: { total: 10, left: 1, asOf: "7월 26일" },
+  // asOf: "auto" = 방문자가 보는 날의 날짜(한국 시간)가 자동 표시. "7월 26일"처럼 쓰면 고정.
+  // ⚠️ left(남은 자리)는 실제로 바뀔 때 반드시 갱신할 것 — 날짜만 자동으로 바뀌고
+  //    자리 수가 방치되면 허위 긴급성(가짜 마감 임박)이 됩니다.
+  SLOTS: { total: 10, left: 1, asOf: "auto" },
 
   // 탈리폼 링크 — 모든 버튼이 이 페이지를 새 탭으로 엽니다
   TALLY_URL: "https://tally.so/r/dWPalq",
@@ -563,7 +566,11 @@ footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34p
   /* 무료 컨설팅 자리 현황 일괄 주입 (CONFIG.SLOTS) */
   document.querySelectorAll('[data-slot-total]').forEach(el => { el.textContent = CONFIG.SLOTS.total; });
   document.querySelectorAll('[data-slot-left]').forEach(el => { el.textContent = CONFIG.SLOTS.left; });
-  document.querySelectorAll('[data-slot-asof]').forEach(el => { el.textContent = CONFIG.SLOTS.asOf; });
+  // asOf가 "auto"면 오늘 날짜(한국 시간)를 "7월 26일" 형식으로 표시
+  const asOf = (!CONFIG.SLOTS.asOf || CONFIG.SLOTS.asOf === 'auto')
+    ? new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric' }).format(new Date())
+    : CONFIG.SLOTS.asOf;
+  document.querySelectorAll('[data-slot-asof]').forEach(el => { el.textContent = asOf; });
 
   /* CTA: 탈리폼을 새 탭으로 (링크 미설정 시 신청 섹션으로 스크롤) */
   document.querySelectorAll('[data-cta]').forEach(el => {
