@@ -7,10 +7,21 @@
 <meta name="description" content="영상은 올리는데 상담 문의는 그대로라면? 30분 진단이면 왜 안 되는지 보입니다. 몽PD 무료 컨설팅은 매월 5명 한정.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
 
+
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-056SVJS20D"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-056SVJS20D');
+</script>
+
 <script>
 /* ==========================================================
    ★ 설정 — 여기 한 곳만 바꾸면 페이지 전체에 반영됩니다 ★
    ========================================================== */
+const PAGE_VARIANT = 'pro';
 const CONFIG = {
   BRAND_NAME: "몽PD",
 
@@ -679,6 +690,25 @@ footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34p
   document.querySelectorAll('[data-review]').forEach(el => {
     if (CONFIG.REVIEW_LINK) { el.href = CONFIG.REVIEW_LINK; el.target = '_blank'; el.rel = 'noopener'; }
     else el.style.display = 'none';
+  });
+
+  /* GA4 클릭 추적: CTA·칼럼·후기 버튼 */
+  const track = (name, params) => { if (typeof gtag === 'function') gtag('event', name, params); };
+  document.querySelectorAll('[data-cta]').forEach(el => {
+    el.addEventListener('click', () => {
+      const where = el.classList.contains('sticky-banner') ? 'banner'
+        : el.closest('header.hero') ? 'hero'
+        : el.closest('#float-cta') ? 'float'
+        : el.closest('#apply') ? 'final' : 'middle';
+      track('cta_click', { cta_location: where, page_variant: PAGE_VARIANT });
+      track('generate_lead', { cta_location: where, page_variant: PAGE_VARIANT });
+    });
+  });
+  document.querySelectorAll('[data-column]').forEach(el => {
+    el.addEventListener('click', () => track('column_click', { column_index: el.dataset.column, page_variant: PAGE_VARIANT }));
+  });
+  document.querySelectorAll('[data-review]').forEach(el => {
+    el.addEventListener('click', () => track('review_click', { page_variant: PAGE_VARIANT }));
   });
 
   /* 플로팅 CTA: 히어로를 지나면 표시, 최종 신청 섹션이 보이면 숨김 */
