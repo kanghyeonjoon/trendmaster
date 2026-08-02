@@ -8,6 +8,11 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
 
 
+<!-- Pretendard (비차단 로드: 첫 화면은 시스템 폰트로 즉시 그리고, 도착하면 교체) -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" as="style" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.min.css" onload="this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.min.css"></noscript>
+
 <!-- Google Analytics 4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-056SVJS20D"></script>
 <script>
@@ -75,6 +80,18 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 img{max-width:100%}
+
+/* 키보드 포커스 가시화 (접근성) */
+:focus-visible{outline:3px solid var(--teal);outline-offset:3px;border-radius:6px}
+
+/* 모션 최소화 설정 존중 (접근성) */
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{
+    animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
+}
 
 .page{max-width:480px;margin:0 auto;background:var(--white);box-shadow:0 0 40px rgba(15,43,37,.08)}
 
