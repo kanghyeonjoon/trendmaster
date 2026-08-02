@@ -607,8 +607,8 @@ footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34p
     float:  '다음 달 우선 대기 신청하기'
   } : {
     banner: '📌 ' + month + '월 무료 컨설팅 <b>' + S.left + '자리</b> 남음',
-    hero:   '매월 ' + S.total + '명만 진행 · ' + month + '월 남은 자리 <b style="color:#fff">' + S.left + '</b>',
-    final:  '📌 ' + month + '월 무료 컨설팅 ' + S.total + '명 중 <b>' + S.left + '자리</b> 남음',
+    hero:   '무료 컨설팅은 매월 <b style="color:#fff">' + S.total + '명</b>만 진행합니다',
+    final:  '📌 ' + month + '월 무료 컨설팅 <b>' + S.left + '자리</b> 남음',
     float:  '무료진단 받기 — ' + month + '월 <b>' + S.left + '자리</b> 남음'
   };
   document.querySelectorAll('[data-slot-line]').forEach(el => { el.innerHTML = LINES[el.dataset.slotLine]; });
