@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>몽PD 전문직 유튜브 30분 무료진단</title>
-<meta name="description" content="영상은 올리는데 상담 문의는 그대로라면? 30분 진단이면 왜 안 되는지 보입니다. 몽PD 무료 컨설팅은 10명 한정.">
+<meta name="description" content="영상은 올리는데 상담 문의는 그대로라면? 30분 진단이면 왜 안 되는지 보입니다. 몽PD 무료 컨설팅은 매월 5명 한정.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
 
 <script>
@@ -17,13 +17,13 @@ const CONFIG = {
   // 히어로 헤드라인에서 순환하는 직군 단어 (2.2초 간격)
   ROTATE_WORDS: ["병의원", "변호사", "세무사", "회계사", "전문직"],
 
-  // 무료 컨설팅 자리 현황 — 매월 10명. left(남은 자리)만 관리하면 됩니다.
+  // 무료 컨설팅 자리 현황 — 매월 5명. left(남은 자리)만 관리하면 됩니다.
   //  · 월 이름과 "신청 마감 D-N"(월말까지 남은 날)은 한국 시간 기준으로 자동 계산됩니다.
-  //  · 매월 1일에 left를 10으로 리셋하고, 자리가 찰 때마다 줄여주세요.
+  //  · 매월 1일에 left를 total과 같게 리셋하고, 자리가 찰 때마다 줄여주세요.
   //  · left를 0으로 두면 페이지 전체가 "이번 달 마감 — 다음 달 우선 대기 신청" 모드로 자동 전환됩니다.
-  //  · nextTotal: 다음 달부터 줄어드는 정원. 8월 1일이 되면 total을 5로 바꾸고 nextTotal은 null로.
+  //  · nextTotal: 다음 달부터 정원을 줄일 때만 숫자를 넣으세요(예고 문구가 자동 표시). 평소엔 null.
   // ⚠️ left를 실제와 다르게 방치하면 허위 긴급성(가짜 마감 임박)이 됩니다.
-  SLOTS: { total: 10, left: 1, nextTotal: 5 },
+  SLOTS: { total: 5, left: 5, nextTotal: null },
 
   // 탈리폼 링크 — 모든 버튼이 이 페이지를 새 탭으로 엽니다
   TALLY_URL: "https://tally.so/r/dWPalq",
@@ -306,7 +306,7 @@ footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34p
 <body>
 <div class="page">
 
-  <!-- ═══════════ [0] 스티키 배너 — 진짜 희소성(매월 10명 + 월말 마감)으로 후킹 ═══════════ -->
+  <!-- ═══════════ [0] 스티키 배너 — 진짜 희소성(매월 정원 한정)으로 후킹 ═══════════ -->
   <a class="sticky-banner" href="#apply" data-cta data-slot-line="banner">📌 이번 달 무료 컨설팅 자리 확인</a>
 
   <!-- ═══════════ [1] 히어로 — 통증 + 새 관점 제시 ═══════════ -->
@@ -314,7 +314,7 @@ footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34p
     <h1 style="margin-top:0"><span class="rotator" id="rotator">병의원</span>의 유튜브<br>문제는 영상이 아니라<br><span class="key">설계</span>입니다</h1>
     <p class="pain">무슨 주제로 찍을지 막막하고,<br>영상은 쌓여 가는데 문의는 그대로라면,<br><b style="color:#fff">30분 진단</b>이면 왜 안 되는지 정확히 보입니다.</p>
     <a class="cta" href="#apply" data-cta data-cta-text style="margin-top:34px">몽PD 30분 무료진단 받기</a>
-    <p class="cta-note" data-slot-line="hero">무료 컨설팅은 매월 10명만 진행합니다</p>
+    <p class="cta-note" data-slot-line="hero">무료 컨설팅은 매월 정해진 인원만 진행합니다</p>
   </header>
 
   <!-- ═══════════ [2] 문제 환기 — 전문직 유튜브가 실패하는 이유 ═══════════ -->
