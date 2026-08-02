@@ -304,6 +304,33 @@ section{padding:72px 24px}
 }
 .float-cta a:active{transform:scale(.98)}
 
+/* ---------- 소개 섹션 ---------- */
+.about{background:#fff;text-align:center}
+.about .photo{
+  width:100%;max-width:300px;margin:0 auto 30px;
+  border-radius:20px;overflow:hidden;
+  box-shadow:0 10px 30px rgba(15,43,37,.14);
+  line-height:0;
+}
+.about .photo img{width:100%;display:block}
+.about .lead{font-size:17px;font-weight:800;line-height:1.6;margin-bottom:24px}
+.about p.body{font-size:15px;color:var(--ink-soft);line-height:1.9;margin-top:18px}
+.about .numbers{
+  display:flex;gap:12px;margin:30px 0;
+}
+.about .numbers div{
+  flex:1;background:var(--teal-soft);border:1px solid var(--line);
+  border-radius:16px;padding:20px 10px;
+}
+.about .numbers .n{font-size:24px;font-weight:800;color:var(--teal-deep)}
+.about .numbers .l{font-size:12px;color:var(--ink-soft);margin-top:4px;line-height:1.5}
+.about .honest{
+  background:var(--dark);color:#fff;border-radius:18px;
+  padding:28px 22px;margin-top:8px;
+  font-size:16px;line-height:1.75;
+}
+.about .honest b{color:#7FE3CB}
+
 /* ---------- 푸터 ---------- */
 footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34px 24px 46px}
 
@@ -451,6 +478,28 @@ footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34p
     </div>
 
     <p class="t-sm" style="margin-top:32px">분야는 달라도, <b>전환이 설계된 영상</b>의 원리는 같습니다.<br>의료·법률처럼 <b>광고 규제가 있는 분야</b>는 심의 리스크까지 감안해 적용합니다.</p>
+  </section>
+
+
+  <!-- ═══════════ [7.5] 몽PD 소개 — 에토스(누가 하는가) ═══════════ -->
+  <section class="about">
+    <h2 class="t-lg"><span data-brand>몽PD</span>는<br>누구인가</h2>
+    <!-- 사진: docs/mongpd.jpg 업로드 시 자동 표시, 없으면 자동 숨김 -->
+    <div class="photo" id="about-photo" style="display:none;margin-top:32px">
+      <img src="mongpd.jpg" alt="몽PD" loading="lazy" onload="document.getElementById('about-photo').style.display='block'">
+    </div>
+    <p class="lead" style="margin-top:32px">물리치료사로<br>의료 현장에 있었습니다.</p>
+    <p class="body">부업으로 유튜브를 시작했다가,<br>조회수가 아니라 <b>'전환'이 들어오는 구조</b>가<br>따로 있다는 걸 알게 됐습니다.</p>
+    <p class="body">그 구조를 제 채널에서 먼저 검증하고,<br>다른 분들의 채널에 적용했습니다.</p>
+    <div class="numbers">
+      <div><div class="n">50명</div><div class="l">직접 진단한<br>채널 수</div></div>
+      <div><div class="n">6곳</div><div class="l">실제로 함께<br>작업한 채널</div></div>
+    </div>
+    <p class="body" style="margin-bottom:26px">저는 <span class="strike">유튜버</span>를 만들어드리는 사람이 아닙니다.<br>채널 안에 <b>매출로 이어지는 구조를 설계</b>하는 사람입니다.</p>
+    <div class="honest">
+      솔직히 말씀드리면,<br><b>대행 경력이 긴 사람은 아닙니다.</b><br><br>
+      그래서 계약부터 권하지 않습니다.<br>30분 진단으로 먼저 보여드리고,<br>판단은 <b>선생님이</b> 하시면 됩니다.
+    </div>
   </section>
 
   <!-- ═══════════ [7] 비교 — 흔한 대행 vs 몽PD 진단 ═══════════ -->
