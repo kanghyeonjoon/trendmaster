@@ -23,6 +23,9 @@ from brief import HISTORY, today_kst
 
 REQUIRED = ("topic", "angle", "tone", "hook", "main", "why")
 
+# 어투는 반말로 고정한다. 바꾸려면 여기와 WRITING-GUIDE.md의 문체 규칙을 함께 고쳐라.
+ALLOWED_TONE = "반말"
+
 
 # --------------------------------------------------------------------------
 # 검증
@@ -40,8 +43,11 @@ def validate(raw) -> list[dict]:
         missing = [k for k in REQUIRED if not str(item.get(k, "")).strip()]
         if missing:
             raise SystemExit(f"{i}번째 글에 빠진 항목: {', '.join(missing)}")
-        if item["tone"] not in ("존댓말", "반말"):
-            raise SystemExit(f"{i}번째 글의 tone은 '존댓말' 또는 '반말'이어야 합니다.")
+        if item["tone"] != ALLOWED_TONE:
+            raise SystemExit(
+                f"{i}번째 글의 tone이 '{item['tone']}'입니다. "
+                f"어투는 '{ALLOWED_TONE}'로 고정되어 있습니다 (WRITING-GUIDE.md 문체 규칙)."
+            )
 
         post = dict(item)
         post["comments"] = [c for c in item.get("comments") or [] if str(c).strip()]
