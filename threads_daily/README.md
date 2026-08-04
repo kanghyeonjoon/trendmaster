@@ -1,112 +1,84 @@
-# 매일 아침 7시 스레드 발송기
+# 매일 아침 7시 스레드 5편
 
-매일 오전 7시(KST) 몽PD 문체로 쓴 스레드 글 1편을 이메일로 보낸다.
-대행사가 카톡으로 매일 아침 글을 전달해주던 방식을 그대로 자동화한 것이다.
+매일 오전 7시(KST) 몽PD 문체로 쓴 스레드 글 **5편**이 지메일 **임시보관함**에 들어온다.
+대행사가 카톡으로 매일 아침 글을 전달해주던 방식을 자동화한 것이다.
 
 ## 어떻게 돌아가나
 
 ```
-GitHub Actions (매일 22:00 UTC = 07:00 KST)
-  └─ main.py
-       ├─ generate.py  아카이브 168편을 문체 레퍼런스로 Claude가 새 글 작성
-       ├─ send_email.py  본문 / 댓글 1..n / CTA로 나눠 지메일 발송
-       └─ state/history.json  발송한 주제를 기록해 다음 날 중복을 피함
+매일 아침 7시 (KST)
+  └─ Claude 예약 작업이 깨어나서
+       ├─ brief.py          오늘 날짜 + 문체 예시 8편 + 최근 보낸 주제를 뽑아준다
+       ├─ WRITING-GUIDE.md  이 규칙대로 5편을 쓴다
+       ├─ publish.py        형식을 검사하고 메일 HTML로 만든다
+       ├─ 지메일 임시보관함에 초안 생성
+       └─ state/history.json 에 오늘 주제를 기록 (내일 중복 방지)
 ```
 
-- **글은 매일 새로 쓴다.** 아카이브를 재활용하지 않는다. 아카이브는 문체·주제·구조를
-  학습시키는 레퍼런스로만 쓰이고, 날마다 다른 8편이 예시로 들어간다.
-- **중복을 피한다.** 최근 30일치 주제와 각도를 프롬프트에 넣어 같은 얘기를 반복하지 않는다.
-- **실패해도 침묵하지 않는다.** 3회 재시도 후에도 실패하면 실패 알림 메일이 온다.
+**비밀번호나 API 키가 필요 없다.** 이미 연결된 지메일 계정을 그대로 쓴다.
 
-## 설정 (최초 1회)
+## 매일 아침 대표님이 하실 일
 
-### 1. GitHub Secrets 등록
+1. 지메일 → **임시보관함**을 연다
+2. 5편이 본문 / 댓글 / 마지막 유도로 나뉘어 있다
+3. 마음에 드는 걸 복사해서 스레드에 올린다 (본문 먼저, 그다음 댓글 순서대로)
 
-저장소 **Settings → Secrets and variables → Actions → New repository secret**
+## 글 스타일을 바꾸고 싶을 때
 
-| 이름 | 값 |
+**`WRITING-GUIDE.md` 파일만 고치면 된다.** 내일 아침부터 바로 반영된다.
+
+| 이 부분을 고치면 | 이게 바뀐다 |
 |---|---|
-| `ANTHROPIC_API_KEY` | https://console.anthropic.com 에서 발급 |
-| `GMAIL_USER` | 보내는 지메일 주소 |
-| `GMAIL_APP_PASSWORD` | 지메일 **앱 비밀번호** (아래 참고) |
-| `MAIL_TO` | 받는 주소. 생략하면 `GMAIL_USER`로 보냄 |
+| 반복해서 쓰는 개념 | 어떤 주제를 다룰지 |
+| 문체 규칙 | 말투, 줄바꿈, 글 길이 |
+| **절대 지켜야 할 사실 관계** | **쓸 수 있는 숫자와 사례** |
+| 마지막 유도(CTA) | 팔로우 유도 문구 |
+| 하루 5편의 조건 | 5편이 서로 얼마나 달라야 하는지 |
 
-### 2. 지메일 앱 비밀번호 만들기
+### 실적 숫자가 바뀌면 반드시 여기를 고쳐라
 
-계정 비밀번호로는 SMTP 로그인이 안 된다. 앱 비밀번호가 따로 필요하다.
-
-1. Google 계정 → 보안 → **2단계 인증**을 켠다 (안 켜져 있으면 앱 비밀번호 메뉴가 안 보인다)
-2. https://myaccount.google.com/apppasswords 접속
-3. 앱 이름을 아무거나 (예: `트렌드마스터`) 입력하고 생성
-4. 나오는 16자리를 공백 없이 `GMAIL_APP_PASSWORD`에 넣는다
-
-### 3. 동작 확인
-
-저장소 **Actions → 매일 아침 스레드 발송 → Run workflow**
-
-- 먼저 `dry_run`을 켜고 실행하면 메일 없이 로그로 결과만 확인할 수 있다
-- 그대로 실행하면 지금 바로 한 편이 메일로 온다
+"절대 지켜야 할 사실 관계"에 적힌 숫자가 **쓸 수 있는 전부**다.
+목록에 없는 수치·후기·사례는 지어내지 못하게 막아뒀다.
+`docs/CONTENT-TODO.md`의 운영 원칙(가짜 숫자 금지, "최고/1등/유일/100%/보장" 금지 —
+표시광고법)을 그대로 옮긴 것이니, 새 성과가 생기면 목록에 **추가**하고 낡은 숫자는 지워라.
 
 ## 손으로 돌려보기
 
 ```bash
-pip install -r threads_daily/requirements.txt
-export ANTHROPIC_API_KEY=...
-export GMAIL_USER=... GMAIL_APP_PASSWORD=... MAIL_TO=...
+# 오늘의 브리프 확인 (예시 8편 + 최근 주제)
+python3 threads_daily/brief.py
 
-python threads_daily/main.py --dry-run    # 생성만, 발송 안 함
-python threads_daily/main.py --test-mail  # 샘플 메일만, Claude 호출 안 함
-python threads_daily/main.py              # 실제 발송
+# 글 5편을 JSON으로 만든 뒤 형식 검사 + 메일 HTML 생성
+python3 threads_daily/publish.py today.json --html out.html --text out.txt
+
+# 연습만 하고 기록은 남기지 않기
+python3 threads_daily/publish.py today.json --no-record
 ```
 
-## 글 스타일을 바꾸고 싶을 때
-
-`generate.py`의 `SYSTEM` 프롬프트를 고치면 된다. 주요 구획:
-
-| 구획 | 내용 |
-|---|---|
-| 몽PD가 누구인가 | 페르소나, 타깃 독자, 파는 것 |
-| 반복해서 쓰는 개념 | 부하율, 낚싯대 이론, 검색/탐색 기반 등 8가지 |
-| 문체 규칙 | 줄바꿈, 어투, 댓글 분리, 금지 표현 |
-| 절대 지켜야 할 사실 관계 | **검증된 실적 목록** |
-| 마지막 유도(CTA) | 팔로우 / 무료 진단 / 댓글 키워드 / 프로필 링크 |
-
-### 실적 숫자가 바뀌면 반드시 여기를 고쳐라
-
-`SYSTEM`의 "절대 지켜야 할 사실 관계"에 적힌 숫자가 **모델이 쓸 수 있는 전부**다.
-목록에 없는 수치·후기·사례는 지어내지 못하게 막아뒀다. `docs/CONTENT-TODO.md`의
-운영 원칙(가짜 숫자 금지, "최고/1등/유일/100%/보장" 금지 — 표시광고법)을 그대로 옮긴 것이니,
-새 성과가 생기면 목록에 **추가**하고 낡은 숫자는 지워라.
+`publish.py`는 항목이 빠졌거나 어투 값이 잘못됐으면 바로 잡아준다.
+본문 첫 줄이 훅과 다르면 경고를 띄운다.
 
 ## 아카이브 갱신
 
 새 글이 쌓이면 `data/archive.txt` 뒤에 이어 붙이고 (글 사이는 `-----` 구분선) 다시 파싱한다.
 
 ```bash
-python threads_daily/build_corpus.py
+python3 threads_daily/build_corpus.py
 ```
 
-## 발송 시각 바꾸기
+## 발송 시각·편수 바꾸기
 
-`.github/workflows/daily-thread.yml`의 cron은 **UTC 기준**이다. 한국 시간에서 9를 빼면 된다.
-
-| 원하는 시각 (KST) | cron |
-|---|---|
-| 오전 7시 | `0 22 * * *` |
-| 오전 8시 | `0 23 * * *` |
-| 오후 7시 | `0 10 * * *` |
-
-GitHub Actions의 예약 실행은 러너가 붐비면 몇 분에서 십여 분 늦게 시작될 수 있다.
-정확히 7시 00분에 도착해야 한다면 cron을 `30 21 * * *`처럼 조금 앞당겨 두면 된다.
+- **시각**: Claude에게 "스레드 예약 작업 시간을 오전 8시로 바꿔줘"라고 말하면 된다
+- **편수**: `brief.py`의 `POSTS_PER_DAY` 값을 바꾸고, 예약 작업 지시문도 함께 고친다
 
 ## 파일 구성
 
 | 파일 | 역할 |
 |---|---|
-| `main.py` | 오케스트레이션. 재시도, 실패 알림, 기록 저장 |
-| `generate.py` | 프롬프트 조립 + Claude 호출 (`claude-opus-5`, 구조화 출력) |
-| `send_email.py` | 텍스트/HTML 메일 렌더링 + Gmail SMTP 발송 |
+| `WRITING-GUIDE.md` | **글 스타일 규칙. 여기를 고치면 말투가 바뀐다** |
+| `brief.py` | 오늘의 브리프 출력 (날짜 + 예시 8편 + 최근 주제) |
+| `publish.py` | 형식 검사 + 메일 HTML/텍스트 렌더 + 발송 기록 |
 | `build_corpus.py` | `archive.txt` → `posts.json` 파싱 |
 | `data/archive.txt` | 스레드 원문 아카이브 (이미 발행된 글) |
 | `data/posts.json` | 파싱 결과 168편 |
-| `state/history.json` | 발송 기록. 워크플로가 매일 커밋한다 |
+| `state/history.json` | 발송 기록. 매일 아침 자동으로 갱신된다 |
