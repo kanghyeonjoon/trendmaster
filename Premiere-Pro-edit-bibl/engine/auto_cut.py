@@ -820,8 +820,8 @@ def main():
     except Exception as ex:
         print(f"   [주의] _latest.json 기록 건너뜀: {ex}")
 
-    print(f"\n   프리미어 > 파일 > 가져오기 로 .xml 불러오세요.")
-    print(f"   (또는 프리미어 File > Scripts 에서 import_to_premiere.jsx 실행 → 한 번에 가져오기)")
+    print(f"\n   프리미어 > 파일 > 가져오기(Ctrl+I) 로 위 _cut.xml 불러오세요.")
+    print(f"   자막: 같은 방법으로 _cut.srt 가져와 타임라인에 드래그 → 프로그램 모니터 CC 버튼으로 표시 켜기")
     if len(keeps) > 1:
         print(f"   자연스러움 팁: 타임라인 전체 선택 → Cmd+Shift+D 하면")
         print(f"      모든 컷에 기본 오디오 전환이 적용돼 클릭음 없이 부드러워집니다.")
