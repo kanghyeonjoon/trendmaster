@@ -424,6 +424,7 @@ footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34p
     </div>
 
     <p class="t-sm" style="margin-top:30px">그래서 <span data-brand>몽PD</span>는 한 채널의 방향을 잡는 데<br>조사부터 벤치마킹까지 시간을 통째로 씁니다.<br><b>무료 컨설팅을 매월 <span data-slot-total>10</span>명만 받는 이유</b>이고,<br>선착순이 아니라 <b>신청서를 보고 선별하는 이유</b>입니다.</p>
+    <p class="t-sm" data-agency-why style="margin-top:16px;display:none"></p>
   </section>
 
   <!-- ═══════════ [4.5] 솔직한 기대치 + 리프레임 + 3박자 퍼널 ═══════════ -->
@@ -766,9 +767,18 @@ footer{background:#0A1D19;color:#7E948D;font-size:12px;line-height:2;padding:34p
     const head = A.thisLeft > 0
       ? '🎬 ' + month + '월 유튜브 대행 <b>' + A.thisLeft + '자리</b> 남음'
       : '🎬 ' + month + '월 유튜브 대행 <b>마감</b> · ' + nm + '월 <b>' + A.nextLeft + '자리</b> 남음';
-    const tail = '대행은 한 달에 최대 ' + A.max + '팀만 진행합니다.<br>한 채널씩 직접 기획하고 관리하기 때문입니다.';
+    const tail = A.thisLeft > 0
+      ? '진단을 받으신 뒤 대행을 원하셔도,<br>자리가 차면 다음 달로 넘어갑니다.'
+      : '진단은 지금 받으실 수 있지만,<br>대행은 다음 달부터 가능합니다.';
     document.querySelectorAll('[data-agency-line]').forEach(el => {
       el.innerHTML = head + '<br>' + tail;
+      el.style.display = '';
+    });
+    const why = A.thisLeft > 0
+      ? '대행도 같은 이유로 <b>한 달에 최대 ' + A.max + '팀</b>만 진행합니다.<br>많은 채널을 동시에 굴리지 않고<br>한 채널씩 직접 기획하고 관리하기 때문입니다.<br><b>' + month + '월 대행은 ' + A.thisLeft + '자리 남았습니다.</b>'
+      : '대행도 같은 이유로 <b>한 달에 최대 ' + A.max + '팀</b>만 진행합니다.<br>많은 채널을 동시에 굴리지 않고<br>한 채널씩 직접 기획하고 관리하기 때문입니다.<br><b>' + month + '월 대행은 이미 마감됐습니다.</b>';
+    document.querySelectorAll('[data-agency-why]').forEach(el => {
+      el.innerHTML = why;
       el.style.display = '';
     });
   }
